@@ -54,3 +54,12 @@ test('rejects wrong files rather than inventing nonfollowers', () => {
     /Too many/);
   assert.throws(() => compareExports([], []), /Choose at least one/);
 });
+
+test('valid duplicate entries are counted as parseable rows, not errors', () => {
+  const following = { relationships_following: [
+    makeRecord('alice'), makeRecord('bob'), makeRecord('BOB'), makeRecord('bOb')
+  ] };
+  const compared = compareExports([[makeRecord('alice')]], [following]);
+  assert.equal(compared.followingCount, 2);
+  assert.deepEqual(compared.notFollowingBack, ['bob']);
+});
