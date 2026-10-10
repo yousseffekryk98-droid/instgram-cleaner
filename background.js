@@ -32,6 +32,9 @@
     const run = await getRun();
     if (!run?.active) return { error: 'No unfollow queue is running.' };
     run.stopRequested = true;
+    // Stop immediately when waiting between accounts; otherwise let the current
+    // UI operation finish and have finishEntry mark the queue inactive.
+    if (!run.inFlight) run.active = false;
     run.message = reason;
     await saveRun(run);
     await removeAlarm();
