@@ -1,16 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Instagram Cleaner - Unfollow",
-  "version": "1.0.0",
-  "description": "Instagram following list cleanup assistant",
+  "name": "Instagram Cleaner — Not Following Back",
+  "version": "1.1.0",
+  "description": "Compare your Instagram data export locally and review accounts not following you back before unfollowing.",
   "permissions": [
     "storage",
-    "activeTab"
+    "tabs"
   ],
   "host_permissions": [
     "https://www.instagram.com/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
+    "default_title": "Not Following Back",
     "default_popup": "popup.html"
   },
   "content_scripts": [
