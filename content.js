@@ -213,6 +213,15 @@
           else if (mode === 'likes' && !onLikesPage()) error = 'Open Your activity → Likes first.';
           else { void run(mode, Math.min(25, Math.max(1, Number(msg.limit) || 10))); message = 'Started.'; }
           break;
+        case 'UNLIKE':
+          if (mode !== 'likes' || !onLikesPage()) { error = 'Open the Instagram Likes page first.'; break; }
+          if (state.likes.running) { error = 'Finish selection before pressing Unlike.'; break; }
+          {
+            const unlike = buttons(document).find(b => /^(unlike|إلغاء الإعجاب)(\\b|\\s|$)/i.test(label(b)));
+            if (!unlike || unlike.disabled) error = 'Instagram’s native Unlike button was not found. Select liked posts using Instagram’s built-in controls first.';
+            else { unlike.click(); message = 'Pressed Instagram’s Unlike control. Complete any Instagram confirmation on the page and verify the result.'; }
+          }
+          break;
         case 'STOP': s.stop = true; message = 'Stop requested.'; break;
         default: error = 'Unknown command.';
       }
