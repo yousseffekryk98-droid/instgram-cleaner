@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Instagram Cleaner — Not Following Back",
-  "version": "1.2.0",
-  "description": "Compare Instagram exports and process a durable, stoppable nonfollower queue",
+  "version": "1.3.0",
+  "description": "Instagram nonfollowers cleanup with 5-second active interval and durable 30-second fallback",
   "permissions": [
     "storage",
     "tabs",
