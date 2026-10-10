@@ -11,7 +11,7 @@
     <header>
       <span class="brand" aria-hidden="true">◎</span>
       <div><h1>Not Following Back</h1><small>Instagram Cleaner · Private local comparison</small></div>
-      <span class="version">v1.1</span>
+      <span class="version">v1.2</span>
     </header>
     <section class="info">
       <strong>1. Export your Instagram data</strong>
@@ -46,8 +46,8 @@
         <button id="showProtected">Show protected</button>
       </div>
       <h2>3. Unfollow your selection</h2>
-      <p class="muted">The extension opens Instagram profiles in a separate tab and only clicks visible Following → Unfollow controls. Choose a small batch and verify the results in Instagram.</p>
-      <div class="limit"><label for="limit">Maximum per batch</label><input id="limit" type="number" min="1" max="10" value="5"><small>1–10 accounts</small></div>
+      <p class="muted">The extension opens Instagram profiles in a separate tab and only clicks visible Following → Unfollow controls. The extension remembers the queue and opens each selected profile in turn, waiting between profiles. Verify results in Instagram.</p>
+      <div class="limit"><label for="limit">Accounts to process</label><input id="limit" type="number" min="0" max="5000" value="0"><small>0 = ALL selected · one every 30+ seconds</small></div>
       <div class="row"><button id="start" class="danger">Unfollow selected</button><button id="stop" disabled>Stop</button></div>
       <button id="clearImport" class="secondary">Clear imported data from this browser</button>
     </section>
