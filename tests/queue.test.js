@@ -114,6 +114,7 @@ test('Stop cancels future alarms', async () => {
   await f.send({ type:'START_NONFOLLOWERS', limit:0 });
   const stopped = await f.send({ type:'STOP_NONFOLLOWERS' });
   assert.match(stopped.message, /Stop requested/);
+  assert.equal(f.store.nonfollowersRun.active, false);
   f.fire(); await new Promise(resolve => setTimeout(resolve, 50));
   assert.equal(f.tabs.calls.length, 0);
 });
