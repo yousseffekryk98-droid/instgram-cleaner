@@ -1,1 +1,1 @@
-window.CLEANER_VARIANT = 'unfollow';
+window.CLEANER_VARIANT = 'likes';
