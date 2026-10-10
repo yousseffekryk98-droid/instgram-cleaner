@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Instagram Cleaner - Unfollow",
+  "name": "Instagram Cleaner - Remove Likes",
   "version": "1.0.0",
-  "description": "Instagram following list cleanup assistant",
+  "description": "Assist with selecting liked Instagram posts and Reels",
   "permissions": [
     "storage",
     "activeTab"
