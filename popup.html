@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Instagram Cleaner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header><span class="brand">◎</span><div><h1>Instagram Cleaner</h1><small>User-controlled account cleanup</small></div><span class="version">v1.0</span></header>
+    <section class="info">
+      <strong id="modeTitle">Unfollow manager</strong>
+      <p id="guide">Open your Following list in Instagram, then scan and select accounts.</p>
+    </section>
+    <nav id="modeNav" aria-label="Cleanup mode">
+      <button data-mode="unfollow" class="active">Following</button>
+      <button data-mode="likes">Liked content</button>
+    </nav>
+    <div class="row"><button class="primary" id="open">Open Instagram ↗</button><button id="scan">Scan loaded</button></div>
+    <div id="notice" role="status" aria-live="polite">Open Instagram and sign in to get started.</div>
+    <div class="tools"><span id="count">0 loaded · 0 selected</span><div><button id="all">Select all</button><button id="clear">Clear</button></div></div>
+    <div id="items" role="list"><p class="empty">No items scanned yet.</p></div>
+    <div class="row" id="protectRow"><button id="protect">Protect selected</button><button id="unprotect">Unprotect loaded</button></div>
+    <div class="limit"><label for="max">Items this run</label><input id="max" type="number" value="10" min="1" max="25"><small>Maximum 25 per run</small></div>
+    <div class="row"><button class="danger" id="start">Unfollow selected</button><button id="stop" disabled>Stop</button></div>
+    <p id="progress" aria-live="polite"></p>
+    <footer>No passwords or external servers. Instagram may restrict repetitive activity. Review selections carefully.</footer>
+  </main>
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
