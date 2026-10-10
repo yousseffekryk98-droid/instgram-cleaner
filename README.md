@@ -1,4 +1,4 @@
-# Instagram Cleaner — Remove Likes (v1.2)
+# Instagram Cleaner — Remove Likes (v1.3)
 
 Chrome extension for selecting previously liked Instagram photos, videos and Reels using Instagram's visible **Your activity → Likes** interface.
 
@@ -49,6 +49,22 @@ No password or third-party account is needed.
 ## Privacy
 
 No passwords, outside API requests, or analytics. The extension runs only against Instagram's visible page. Not affiliated with Instagram or Meta.
+
+
+## v1.3 automatic UI reliability update
+
+- Opens Instagram's native **Select** mode automatically where the page exposes a unique button or plain-text selection control; attempts to click the first visible tile and verify Instagram reports it selected.
+- Recognizes more native **Unlike** labels and clickable card wrappers; handles a unique Unlike confirmation in Instagram where available.
+- Repeats small Likes batches: select thumbnails → use Instagram's Unlike → verify the page changed → wait → scroll/load more → repeat up to the selected maximum.
+- Adds a **Step** field to progress (Scanning / Selecting / Unliking / Loading / Waiting / Stopped) so it is clear where the loop stopped.
+- Adds **Copy cleanup diagnostics** (counts and controls only—no usernames, media URLs, or credentials). If Instagram's live UI differs, use this after a failed run and share the output so the selector can be adjusted.
+- Includes tests for **three successive automatic Unlike batches**, rather than testing just a single batch. Run `node --test tests/likes-engine.test.js tests/likes-auto.test.js`.
+
+### Install the actual update
+
+Download this branch ZIP, extract it, replace/remove the previous installed extension, and click **Reload** in `chrome://extensions`. Then **refresh the Instagram Likes tab**; an open tab will otherwise still run the older content scripts. You must start an automatic run once and confirm it. After that, popup clicks should not be necessary for each batch on a supported Instagram layout.
+
+Instagram can block bulk activity, require verification, or change the selection/Unlike UI. This update does **not** remove Instagram's limits or guarantee thousands of completed actions. If it stops, read the Step and reason before restarting; do not retry while restricted.
 
 ## Automatic cleanup (v1.2)
 
