@@ -25,6 +25,22 @@
     <div class="limit"><label for="max">Items this run</label><input id="max" type="number" value="10" min="1" max="25"><small>Maximum 25 per run</small></div>
     <div class="row"><button class="danger" id="start">Unfollow selected</button><button id="stop" disabled>Stop</button></div>
     <div class="row" id="likesFinish" hidden><button id="finishLikes" class="danger">Unlike selected in Instagram</button></div>
+    <section id="autoLikes" class="auto-section" hidden>
+      <h2>Automatic Likes cleanup</h2>
+      <p>Automatically select a small group of liked posts, press <b>Instagram's own Unlike</b> control, wait for the grid to change, load more, and repeat. Stops on restrictions, uncertain results, or when nothing more loads.</p>
+      <div class="auto-settings">
+        <label>Batch size<input id="autoBatch" type="number" min="1" max="20" value="10"></label>
+        <label>Maximum likes<input id="autoTarget" type="number" min="1" max="10000" value="5000"></label>
+        <label>Wait between batches (sec)<input id="autoWait" type="number" min="10" max="120" value="15"></label>
+      </div>
+      <div class="row">
+        <button id="autoStart" class="primary">Start automatic cleanup</button>
+        <button id="autoStop" class="danger" disabled>Stop</button>
+      </div>
+      <label class="auto-confirm"><input type="checkbox" id="autoConsent">I understand this unlikes posts on my account without asking again for each batch.</label>
+      <div id="autoProgress" role="status" aria-live="polite">No automatic run yet.</div>
+      <small>Keep this Instagram tab open. You may close the popup. No bypass of Instagram limits; you can restart later if Instagram permits.</small>
+    </section>
     <p id="progress" aria-live="polite"></p>
     <footer>No passwords or external servers. Instagram may restrict repetitive activity. Review selections carefully.</footer>
   </main>
