@@ -113,3 +113,57 @@ test('never clicks Unlike if Instagram does not enter selection mode', async () 
   assert.equal(state.verified, 0);
   assert.equal(f.getCalls(), 0);
 });
+
+test('auto Likes cleanup repeats native Unlike for three successive loaded batches', async () => {
+  const stored = {};
+  let selected = 0, unlikes = 0;
+  let media = ['tile-a','tile-b','tile-c'].map(source => ({
+    source, media: { isConnected: true, scrollIntoView() {} }
+  }));
+  const ui = {
+    isLikesPage: () => true,
+    scan: () => ({ items: media }),
+    selectionCount: () => selected,
+    selectItem: async () => { selected++; return { ok: true, reason: 'Selected in Instagram.' }; },
+    unlikeNative: () => {
+      unlikes++;
+      selected = 0;
+      media = media.slice(1);
+      return { message: 'Clicked native Unlike.' };
+    },
+    diagnostics: () => ({ loadedTiles: media.length, nativeUnlikeControls: 1 })
+  };
+  let listener;
+  const chrome = {
+    storage: { local: {
+      get: async key => typeof key === 'string'
+        ? { [key]: stored[key] } : { ...stored },
+      set: async values => { Object.assign(stored, values); }
+    }},
+    runtime: {
+      sendMessage: () => Promise.resolve(),
+      onMessage: { addListener: cb => { listener = cb; } }
+    }
+  };
+  const context = {
+    chrome, document: { body: { innerText: '' }, querySelectorAll: () => [] },
+    location: { pathname: '/your_activity/interactions/likes/' },
+    window: { scrollBy: () => {} }, innerHeight: 900,
+    // Simulate the wall-clock gaps without sleeping 30 seconds in CI.
+    setTimeout: callback => setImmediate(callback), clearTimeout: () => {}
+  };
+  context.globalThis = context;
+  context.InstagramLikesUI = ui;
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  const auto = context.InstagramLikesAutopilot;
+  const state = await auto.run({ batchSize: 1, target: 3, waitSeconds: 10 });
+  assert.equal(state.state, 'finished');
+  assert.equal(state.verified, 3);
+  assert.equal(state.batches, 3);
+  assert.equal(unlikes, 3);
+  assert.equal(media.length, 0);
+  let response;
+  listener({ type: 'LIKES_AUTO_DIAG' }, {}, result => { response = result; });
+  assert.equal(response.diagnostics.loadedTiles, 0);
+});
