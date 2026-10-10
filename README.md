@@ -23,7 +23,7 @@ There is no npm install, build step, server, API key, or Instagram-password fiel
 4. Choose entries individually or click **Select all**. Enter a selection limit of up to **25**.
 5. Click **Select in Instagram** and confirm the extension prompt.
 6. The extension attempts to tick Instagram's visible native selection checkboxes. **Review those selections in Instagram**.
-7. Click Instagram's **Unlike** control and complete any Instagram confirmation. **The extension does not click Unlike for you.**
+7. After checking the selections on Instagram, click **Unlike selected in Instagram** in the extension and confirm its prompt. The extension clicks Instagram's own Unlike control if it is available. Complete any further Instagram confirmation yourself.
 8. Scroll to load more items, scan again and repeat.
 
 ## What works and what can fail
@@ -38,7 +38,7 @@ There is no npm install, build step, server, API key, or Instagram-password fiel
 
 ## Privacy and safety
 
-No credential collection, analytics or third-party servers. The extension only targets `https://www.instagram.com/*` and uses page controls. The user reviews and confirms the final unlike inside Instagram. This is not affiliated with Instagram or Meta.
+No credential collection, analytics or third-party servers. The extension only targets `https://www.instagram.com/*` and uses page controls. The user explicitly confirms the final unlike action in the popup; Instagram may also require its own confirmation. This is not affiliated with Instagram or Meta.
 
 ## Troubleshooting
 
