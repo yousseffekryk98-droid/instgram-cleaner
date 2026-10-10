@@ -27,3 +27,16 @@ input[type=checkbox]{accent-color:#ae79f5}
 #progress{min-height:18px;color:#b6c7e4}
 footer{color:#8e9cb2;border-top:1px solid #28344b;padding-top:10px;font-size:10px}
 [hidden]{display:none!important}
+
+/* Automatic Likes cleanup settings and progress */
+.auto-section{margin-top:12px;padding:13px;background:#171f34;border:1px solid #3b4771;border-radius:11px}
+.auto-section h2{font-size:14px;margin:0 0 6px}
+.auto-section p,.auto-section small{font-size:11px;color:#b3bed4;line-height:1.55;margin:4px 0 11px}
+.auto-settings{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0}
+.auto-settings label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#cbd5e6}
+.auto-settings label:last-child{grid-column:span 2}
+.auto-settings input{width:100%;padding:7px;color:#fff;background:#111827;border:1px solid #4b5d7b;border-radius:7px}
+.auto-confirm{display:flex;gap:8px;align-items:flex-start;margin:8px 0 10px;color:#dde5f3;font-size:11px;line-height:1.45;cursor:pointer}
+.auto-confirm input{flex:none;margin-top:2px}
+#autoProgress{white-space:pre-line;background:#0f1727;border-radius:8px;color:#bcd3fc;font-size:11px;line-height:1.5;padding:10px;margin:9px 0}
+.auto-section .row button{flex:1}
