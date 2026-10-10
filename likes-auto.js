@@ -88,7 +88,7 @@
   async function awaitConfirmationOrUpdate(beforeSources, expectedCount) {
     const startTime = Date.now();
     let confirmClicked = false;
-    while (Date.now() - startTime < 14000) {
+    while (Date.now() - startTime < 30000) {
       ensureSafe();
       const confirm = selectedDialogButton();
       if (confirm && !confirmClicked) {
@@ -122,12 +122,22 @@
     if (selected() !== null) return { ok: true, selectedNow: 0 };
     const countBefore = selected();
     // Instagram sometimes exposes a distinct Select button in the Likes activity.
-    const selectButtons = nativeButtons(document).filter(b =>
+    let selectButtons = nativeButtons(document).filter(b =>
       /^(select|تحديد|اختيار)$/i.test(buttonText(b)));
+    if (!selectButtons.length) {
+      // Instagram sometimes uses a plain text control rather than a <button>.
+      selectButtons = [...document.querySelectorAll('span,div')]
+        .filter(el => visible(el) && !el.children?.length &&
+          /^(select|تحديد|اختيار)$/i.test(buttonText(el)));
+    }
     if (selectButtons.length === 1) {
       selectButtons[0].click();
-      await waitSafely(500);
-      if (selected() !== null) return { ok: true, selectedNow: 0 };
+      await waitSafely(600);
+      // A selection toolbar may not show a count until the first tile is clicked.
+      // Continue to click the first tile and verify instead of requiring a manual click.
+      if (selected() !== null && selected() > 0) return {
+        ok: true, selectedNow: selected()
+      };
     }
     // Some Instagram web versions begin selection when a tile is clicked.
     // Try exactly one tile and verify that we remained on Likes with a selection count.
@@ -163,11 +173,11 @@
     const last = scan.items?.at(-1);
     const pane = scrollContainer(last);
     let tries = 0;
-    while (tries++ < 5) {
+    while (tries++ < 8) {
       ensureSafe();
       if (pane) pane.scrollBy({ top: Math.max(pane.clientHeight * 0.85, 500), behavior: 'instant' });
       else window.scrollBy({ top: Math.max(innerHeight * 0.8, 500), behavior: 'instant' });
-      await waitSafely(1100 + tries * 350);
+      await waitSafely(1450 + tries * 300);
       const next = ui.scan();
       if ((next.items || []).some(item => !previousSources.has(item.source))) {
         return { ok: true, items: next.items };
@@ -190,7 +200,7 @@
     const verified = prior && options?.resume ? prior.verified : 0;
     const batches = prior && options?.resume ? prior.batches : 0;
     await publish({
-      state: 'running', selected: 0, verified, batches, skipped: 0,
+      state: 'running', phase: 'Scanning', selected: 0, verified, batches, skipped: 0,
       batchSize, target, message: 'Starting. Leave the Instagram Likes tab open.'
     });
     // Use a set of sources confirmed removed only in this session.
@@ -199,12 +209,13 @@
     try {
       while (status.verified < target) {
         ensureSafe();
+        await publish({ phase: 'Scanning', message: 'Scanning visible Likes tiles…' });
         let scan = ui.scan();
         if (scan.error) throw new Error(scan.error);
         let items = scan.items || [];
 
         if (!items.length || items.every(x => stalled.has(x.source) || completed.has(x.source))) {
-          await publish({ message: 'Waiting for Instagram to load more Likes…' });
+          await publish({ phase: 'Loading', message: 'Waiting for Instagram to load more Likes…' });
           const next = await loadNext(new Set([...items.map(x => x.source), ...completed]));
           if (!next.ok) {
             await publish({ state: 'finished', message: next.reason });
@@ -213,6 +224,7 @@
           items = next.items;
         }
 
+        await publish({ phase: 'Selecting', message: 'Selecting the next Likes batch on Instagram…' });
         const remaining = Math.min(batchSize, target - status.verified);
         let nativeCount = selected();
         if (nativeCount !== null && nativeCount > remaining) {
@@ -265,7 +277,7 @@
         if (nativeCount > remaining) throw new Error('Instagram selected more items than the batch limit. Stopping.');
 
         await publish({
-          selected: nativeCount,
+          phase: 'Unliking', selected: nativeCount,
           message: 'Selected ' + nativeCount + ' on Instagram. Using Instagram’s native Unlike action…'
         });
         // Verify selected tiles disappear, rather than an unrelated grid tile.
@@ -280,7 +292,7 @@
         const after = allMediaSources();
         for (const name of before) if (!after.has(name)) completed.add(name);
         await publish({
-          state: 'running',
+          state: 'running', phase: 'Waiting',
           selected: 0,
           verified: status.verified + nativeCount,
           batches: status.batches + 1,
@@ -302,7 +314,7 @@
       }
       if (status.state === 'running') {
         await publish({
-          state: 'finished',
+          state: 'finished', phase: 'Finished',
           selected: 0,
           message: 'Run finished after ' + status.verified +
             ' observed unlike actions. Verify your Likes list in Instagram.'
@@ -310,7 +322,7 @@
       }
     } catch (error) {
       await publish({
-        state: 'paused', selected: 0,
+        state: 'paused', phase: 'Stopped', selected: 0,
         message: error.message || String(error)
       });
     } finally {
@@ -350,6 +362,13 @@
       reply({ ...stop(), state: current() });
     } else if (message.type === 'LIKES_AUTO_STATUS') {
       reply({ state: current() });
+    } else if (message.type === 'LIKES_AUTO_DIAG') {
+      reply({ diagnostics: {
+        ...ui?.diagnostics?.(),
+        runState: status.state,
+        phase: status.phase || 'unknown',
+        lastMessage: status.message
+      } });
     } else reply({ error: 'Unknown automatic cleanup action.' });
     return false;
   });
