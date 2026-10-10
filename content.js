@@ -55,31 +55,29 @@
     }
     return 'Scanned ' + count + ' visible accounts. Scroll inside Following and scan again for more.';
   }
-  function likeItems() {
-    return [...document.querySelectorAll('a[href]')].flatMap(a => {
-      const match = new URL(a.href, location.origin).pathname.match(/^\/(p|reel|tv)\/([^/]+)/);
-      if (!match) return [];
-      const key = match[1] + '/' + match[2];
-      return [{ key, title: clean(a.querySelector('img')?.alt).slice(0, 80) || key, url: a.href }];
-    });
-  }
   function onLikesPage() {
-    return location.pathname.includes('/your_activity/interactions/likes');
+    return globalThis.InstagramLikesUI?.isLikesPage() || false;
   }
   function scanLikes() {
-    if (!onLikesPage()) return 'Open Your activity → Interactions → Likes before scanning.';
-    const items = likeItems();
-    for (const item of items) state.likes.items.set(item.key, item);
-    return 'Scanned ' + items.length + ' loaded posts/Reels. Use Instagram Select mode for native bulk unlike.';
+    const ui = globalThis.InstagramLikesUI;
+    if (!ui) return 'Likes scanner is unavailable. Reload the Instagram tab after updating the extension.';
+    const result = ui.scan();
+    if (result.error) return result.error;
+    const s = state.likes;
+    s.items = new Map(result.items.map(item => [item.key, item]));
+    s.selected = new Set([...s.selected].filter(key => s.items.has(key)));
+    return result.message;
   }
   function snapshot(mode) {
     const s = state[mode];
     return {
       items: [...s.items.values()].map(x => ({
-        ...x, protected: mode === 'unfollow' && protectedAccounts.has(x.key)
+        key: x.key, title: x.title, url: x.url || '',
+        protected: mode === 'unfollow' && protectedAccounts.has(x.key)
       })),
       selected: [...s.selected].filter(x => mode !== 'unfollow' || !protectedAccounts.has(x)),
-      running: s.running, done: s.done, skipped: s.skipped
+      running: s.running, done: s.done, skipped: s.skipped,
+      instagramSelected: mode === 'likes' ? globalThis.InstagramLikesUI?.selectionCount() ?? null : null
     };
   }
   function report(mode, message) {
@@ -129,36 +127,32 @@
     }
   }
 
-  // Likes edition uses Instagram's native multi-select; the user presses Unlike in Instagram.
-  function findCheckboxFor(anchor) {
-    let node = anchor;
-    for (let i = 0; i < 6 && node; i++, node = node.parentElement) {
-      const checkbox = node.querySelector('input[type="checkbox"],[role="checkbox"]');
-      if (checkbox) return checkbox;
-    }
-    return null;
-  }
+  // Select visible media tiles only in Instagram's native selection mode.
   async function selectLikes(s, limit) {
-    const select = buttons(document).find(b => matches(b, ['select', 'تحديد']));
-    if (select) { select.click(); await pause(500); }
-    for (const key of [...s.selected].slice(0, limit)) {
+    const ui = globalThis.InstagramLikesUI;
+    if (!ui) { report('likes', 'Update not loaded. Reload the Instagram tab.'); return; }
+    const keys = [...s.selected].slice(0, limit);
+    for (const key of keys) {
       if (s.stop) break;
-      const anchor = [...document.querySelectorAll('a[href]')].find(a => {
-        try { return new URL(a.href).pathname.startsWith('/' + key + '/'); }
-        catch { return false; }
-      });
-      const checkbox = anchor && findCheckboxFor(anchor);
-      if (!checkbox || !checkbox.isConnected) {
-        s.skipped++;
-        report('likes', key + ': native selection control not found; select manually.');
-        continue;
+      if (restricted()) {
+        report('likes', 'Instagram shows an account restriction. Stopping.');
+        break;
       }
-      const checked = checkbox.matches('input') ? checkbox.checked : checkbox.getAttribute('aria-checked') === 'true';
-      if (!checked) { checkbox.click(); s.done++; }
-      report('likes', 'Selecting loaded posts in Instagram…');
-      await pause(300);
+      const item = s.items.get(key);
+      if (!item) { s.skipped++; continue; }
+      const result = await ui.selectItem(item);
+      if (result.ok) {
+        s.done++;
+        s.selected.delete(key);
+      } else {
+        s.skipped++;
+      }
+      report('likes', result.reason);
+      // Ambiguous state: stop rather than click other cards.
+      if (!result.ok && /not detected|did not confirm|restored/i.test(result.reason)) break;
+      await pause(350);
     }
-    report('likes', 'Review the highlighted posts and press Instagram’s Unlike button yourself.');
+    report('likes', 'Finished selecting. Verify Instagram selections, then click Unlike selected in Instagram.');
   }
   async function run(mode, limit) {
     const s = state[mode];
@@ -181,7 +175,9 @@
     (async () => {
       let message = '', error = '';
       switch (msg.type) {
-        case 'STATUS': break;
+        case 'STATUS':
+          if (mode === 'likes' && onLikesPage() && !s.items.size) message = scanLikes();
+          break;
         case 'SCAN': message = mode === 'unfollow' ? scanFollowing() : scanLikes(); break;
         case 'ALL':
           s.selected = new Set([...s.items.keys()].filter(k => mode !== 'unfollow' || !protectedAccounts.has(k)));
@@ -213,15 +209,14 @@
           else if (mode === 'likes' && !onLikesPage()) error = 'Open Your activity → Likes first.';
           else { void run(mode, Math.min(25, Math.max(1, Number(msg.limit) || 10))); message = 'Started.'; }
           break;
-        case 'UNLIKE':
-          if (mode !== 'likes' || !onLikesPage()) { error = 'Open the Instagram Likes page first.'; break; }
-          if (state.likes.running) { error = 'Finish selection before pressing Unlike.'; break; }
-          {
-            const unlike = buttons(document).find(b => /^(unlike|إلغاء الإعجاب)(\\b|\\s|$)/i.test(label(b)));
-            if (!unlike || unlike.disabled) error = 'Instagram’s native Unlike button was not found. Select liked posts using Instagram’s built-in controls first.';
-            else { unlike.click(); message = 'Pressed Instagram’s Unlike control. Complete any Instagram confirmation on the page and verify the result.'; }
-          }
+        case 'UNLIKE': {
+          if (mode !== 'likes') { error = 'Choose the Likes tool first.'; break; }
+          if (state.likes.running) { error = 'Finish selecting posts before pressing Unlike.'; break; }
+          const action = globalThis.InstagramLikesUI?.unlikeNative();
+          error = action?.error || (!action ? 'Likes helper unavailable. Reload Instagram.' : '');
+          message = action?.message || '';
           break;
+        }
         case 'STOP': s.stop = true; message = 'Stop requested.'; break;
         default: error = 'Unknown command.';
       }
