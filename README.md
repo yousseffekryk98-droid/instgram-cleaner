@@ -1,6 +1,6 @@
 # Instagram Cleaner — All-in-One
 
-A **Chrome Manifest V3** extension combining the **Unfollow manager** and **Remove Likes assistant**.
+A **Chrome Manifest V3** extension combining the **Unfollow manager** and **Remove Likes assistant**. Likes grid scanning was improved in **v1.1** to detect thumbnail tiles even without `/p/` or `/reel/` links.
 
 - [Unfollow-only (main)](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/main)
 - [Remove Likes only](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/remove-likes)
@@ -26,18 +26,18 @@ All functionality runs locally in your browser; there is no build process or Ins
 ## Tool 2 — Remove Likes
 
 1. Open **Your activity → Interactions → Likes** on Instagram.
-2. In the extension, switch to **Liked content** and click **Scan loaded**.
-3. Press Instagram's own **Select** control to reveal selectable cards if available.
+2. In the extension, switch to **Liked content** and click **Scan loaded**. This now discovers visible photo/Reel thumbnails even when Instagram doesn't render post links.
+3. If Instagram has no visible **Select** control, click one thumbnail on Instagram to activate the **1 selected** bar, then click **Scan loaded** again.
 4. Check the desired posts/Reels in the popup, or choose **Select all**.
-5. Set the limit (1–25), press **Select in Instagram**, and confirm.
-6. Review the actual selections on Instagram. Click **Unlike selected in Instagram** in the extension, confirm the popup, and finish any further Instagram confirmation. Alternatively press Instagram's own **Unlike** button manually.
+5. Set the limit (1–25), press **Select in Instagram**, and confirm. The extension displays separate counts for items selected in the popup and items selected on Instagram.
+6. Review the actual selections on Instagram. Click **Unlike selected in Instagram** in the extension, confirm the popup, and finish any further Instagram confirmation. Alternatively press Instagram's own **Unlike** button manually. The extension does not claim success without verification.
 7. Scroll and rescan for more items.
 
 ## Important limitations
 
 - The tool sees only Instagram items currently rendered in the page, not your full historical data.
 - DOM markup, labels and native checkbox controls vary and can change without notice.
-- Likes selection works only where native checkboxes are detectable; otherwise complete selection manually on Instagram.
+- Likes selection now also tries thumbnail-card clicks when Instagram's native selected-count UI is detected. If it cannot verify the selection, it stops rather than guessing; select manually on Instagram.
 - Instagram may limit activity. The extension does not bypass account restrictions, login challenges or security checks.
 - Unfollow is hard to undo. Always carefully review the selected people.
 - While the extension is running, do not navigate the active Instagram tab away from the relevant list.
@@ -53,3 +53,7 @@ No password capture, external analytics, remote servers or direct Instagram priv
 | `main` | Unfollow only |
 | `remove-likes` | Liked content selection assistant |
 | `all-in-one` | Both features |
+
+## Likes scanner regression tests
+
+Run `node --test tests/likes-engine.test.js` (Node.js 18+) to test the thumbnail scanner and native-selection state. These are mocked DOM tests; real Instagram can change without notice.
