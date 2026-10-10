@@ -5,10 +5,14 @@
   'use strict';
   const KEY = 'nonfollowersRun';
   const ALARM = 'instagram-nonfollowers-next';
-  const GAP_MS = 30000; // Chrome alarms wake the service worker between actions.
+  // Run the next account after five seconds while the worker is alive.
+  // Chrome alarms cannot guarantee a 5s wake-up, so retain a 30s recovery alarm.
+  const GAP_MS = 5000;
+  const FALLBACK_ALARM_MS = 30000;
   const MAX_QUEUE = 5000;
   const LOAD_TIMEOUT = 25000;
   let executing = false;
+  let fastTimer = null;
 
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const validName = s => typeof s === 'string' && /^[a-z0-9._]{1,30}$/i.test(s);
@@ -26,7 +30,26 @@
   async function nextAlarm(when) {
     await chrome.alarms.create(ALARM, { when: Date.now() + when });
   }
-  async function removeAlarm() { await chrome.alarms.clear(ALARM); }
+  function clearFastTimer() {
+    if (fastTimer !== null) {
+      clearTimeout(fastTimer);
+      fastTimer = null;
+    }
+  }
+  async function scheduleNext(delayMs = GAP_MS) {
+    clearFastTimer();
+    // Backstop only: alarm delivery has a 30-second minimum and is not precise.
+    await nextAlarm(Math.max(FALLBACK_ALARM_MS, delayMs));
+    fastTimer = setTimeout(() => {
+      fastTimer = null;
+      void processNext();
+    }, delayMs);
+  }
+  async function cancelScheduledNext() {
+    clearFastTimer();
+    await chrome.alarms.clear(ALARM);
+  }
+  async function removeAlarm() { await cancelScheduledNext(); }
   function same(id, run) { return !!run && run.id === id; }
   async function stop(reason = 'Stopped by user. No further accounts will be processed.') {
     const run = await getRun();
@@ -70,8 +93,9 @@
       createdAt: Date.now(), updatedAt: Date.now()
     };
     await saveRun(run);
-    await nextAlarm(1500);
-    return { message: 'Queue scheduled for ' + queue.length + ' accounts, one at a time.' };
+    await scheduleNext(1500);
+    return { message: 'Queue scheduled for ' + queue.length +
+      ' accounts, one at a time (5s between accounts while Chrome is active).' };
   }
 
   async function waitForDocument(tabId, username) {
@@ -157,15 +181,17 @@
       await saveRun(run);
       await removeAlarm();
     } else {
-      run.message += ' Next account scheduled in at least 30 seconds.';
+      run.message += ' Next account in about 5 seconds while Chrome is active; 30s+ fallback if suspended.';
       await saveRun(run);
-      await nextAlarm(GAP_MS);
+      await scheduleNext(GAP_MS);
     }
   }
 
   async function processNext() {
     if (executing) return;
     executing = true;
+    // Any stale alarm from the previous account must not race the 5s timer.
+    await removeAlarm();
     let run;
     try {
       run = await getRun();
@@ -278,7 +304,7 @@
           status: 'skipped', reason: 'Chrome restarted during this profile; verify manually.'
         });
       } else {
-        await nextAlarm(2000);
+        await scheduleNext(2000);
       }
     });
   });
