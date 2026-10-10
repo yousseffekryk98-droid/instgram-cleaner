@@ -168,16 +168,20 @@
             : '@' + username + ' skipped: ' + (result.reason || 'Could not verify unfollow.')
         };
         const storageUpdates = {};
+        // Do not keep attempting other accounts if Instagram signals a restriction.
+        const restriction = /restriction|challenge|temporarily blocked|try again later/i.test(result.reason || '');
+        if (restriction) updates.message += ' Batch halted because Instagram restricted the action.';
         if (succeeded) {
           storageUpdates.completedTargets = [...new Set([...saved.completedTargets, username])];
           storageUpdates.selectedTargets = saved.selectedTargets.filter(x => x !== username);
         }
         // Keep stopRequested from the latest snapshot.
         storageUpdates.nonfollowersRun = {
-          ...previous, ...updates, updatedAt: Date.now()
+          ...previous, ...updates, stopRequested: previous.stopRequested || restriction,
+          updatedAt: Date.now()
         };
         await chrome.storage.local.set(storageUpdates);
-        if (previous.stopRequested) { finished = true; break; }
+        if (previous.stopRequested || restriction) { finished = true; break; }
         if (index + 1 < queue.length) await delay(BETWEEN_ACTIONS_MS);
       }
     } finally {
