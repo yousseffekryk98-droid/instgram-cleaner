@@ -170,6 +170,8 @@
     }
   }
   chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+    // Auto cleanup messages belong exclusively to likes-auto.js.
+    if (msg?.type?.startsWith('LIKES_AUTO_')) return false;
     const mode = msg.mode === 'likes' ? 'likes' : 'unfollow';
     const s = state[mode];
     (async () => {
