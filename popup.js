@@ -61,7 +61,7 @@
     $('clearImport').disabled = running;
     if (run) {
       const lines = [
-        (running ? 'Running' : 'Last batch') + ': ' + format(run.processed) + ' / ' +
+        (running ? 'Queue running' : 'Last queue') + ': ' + format(run.processed) + ' / ' +
           format(run.total) + ', verified ' + format(run.succeeded) + ', skipped ' + format(run.skipped),
         run.current ? 'Current: @' + run.current : '',
         run.message || '',
@@ -156,11 +156,13 @@
 
   async function start() {
     if (!comparison || !selected.size || run?.active) return;
-    const limit = Math.max(1, Math.min(10, Number($('limit').value) || 5));
-    if (!confirm('Unfollow up to ' + limit + ' selected Instagram accounts identified as not following you back? The extension will open their profiles in a new tab, clicking Following → Unfollow only when the controls are recognizable. This changes your account.')) return;
+    const requested = Number($('limit').value);
+    const limit = requested === 0 ? 0 : Math.max(1, Math.min(5000, Math.floor(requested) || 10));
+    const actual = limit === 0 ? selected.size : Math.min(selected.size, limit);
+    if (!confirm('Queue ' + actual + ' selected Instagram accounts not following you back? It will process each account automatically using visible Following → Unfollow controls, approximately one per 30+ seconds. Stop anytime; Instagram limits still apply. This changes your account.')) return;
     const response = await chrome.runtime.sendMessage({ type: 'START_NONFOLLOWERS', limit });
     if (response?.error) throw Error(response.error);
-    notice('Run started. You can close this popup and return to see progress.');
+    notice('Queue started. It continues using Chrome alarms after you close the popup. Keep Chrome open.');
     await reload();
   }
   function handler(id, fn) {
