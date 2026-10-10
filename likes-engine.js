@@ -21,9 +21,23 @@
   const isUnlikeText = text => /^(unlike|remove likes?|إلغاء الإعجاب|إلغاء تسجيل الإعجاب)(?:\s*\(?\d+\)?)?$/i.test(normalized(text));
   const isSelectText = text => /^(select|تحديد|اختيار)$/i.test(normalized(text));
   function findUnlikeButton() {
+    if (!isLikesPage()) return null;
+    // Instagram can render the native toolbar action as a button, a role=button,
+    // or a leaf text span with a click handler higher up its own DOM tree.
     const candidates = nativeButtons().filter(b => isUnlikeText(buttonText(b)));
+    const dialogs = [...document.querySelectorAll('[role="dialog"],[role="alertdialog"]')];
+    const dialogButtons = candidates.filter(b => dialogs.some(d => d.contains(b)));
+    if (dialogButtons.length === 1) return dialogButtons[0];
+    if (dialogButtons.length > 1) return null;
     if (candidates.length === 1) return candidates[0];
-    return null;
+    if (candidates.length > 1) return null;
+    const leaves = [...document.querySelectorAll('span,div')]
+      .filter(el => visible(el) && el.children.length === 0 &&
+        isUnlikeText(normalized(el.innerText || el.textContent)));
+    if (leaves.length !== 1) return null;
+    // Clicking this exact native label bubbles to Instagram's handler, if any.
+    // Do not guess if the label is ambiguous or missing.
+    return leaves[0];
   }
   function selectionCount() {
     // Look for the small native "1 selected" text, never search an entire container's text.
