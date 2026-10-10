@@ -3,8 +3,8 @@
 A **Chrome Manifest V3** extension for reviewing and selectively unfollowing accounts on **your own Instagram account**.
 
 > This repository's **main** branch is the **Unfollow** edition. Other editions:
-> - [Remove Likes edition](../../tree/remove-likes)
-> - [All-in-One edition](../../tree/all-in-one)
+> - [Remove Likes edition](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/remove-likes)
+> - [All-in-One edition](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/all-in-one)
 
 ## Install
 
@@ -64,4 +64,4 @@ No npm, build, API key, account password, or third-party service is required.
 
 No analytics, tracking pixels, server endpoints, or credential capture. Only the Instagram website is targeted; protected usernames remain in `chrome.storage.local`.
 
-Licensed for personal educational use; review Instagram's terms before operating automation.
+Review Instagram's terms before operating automated account actions.
