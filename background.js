@@ -157,6 +157,7 @@
       await saveRun(run);
       await removeAlarm();
     } else {
+      run.message += ' Next account scheduled in at least 30 seconds.';
       await saveRun(run);
       await nextAlarm(GAP_MS);
     }
