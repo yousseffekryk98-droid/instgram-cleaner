@@ -27,3 +27,28 @@ input[type=checkbox]{accent-color:#ae79f5}
 #progress{min-height:18px;color:#b6c7e4}
 footer{color:#8e9cb2;border-top:1px solid #28344b;padding-top:10px;font-size:10px}
 [hidden]{display:none!important}
+
+/* Not Following Back edition */
+body{width:420px}
+h2{font-size:13px;margin:14px 0 8px;color:#e5e9f6}
+code{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:#e5bdff}
+.import{display:flex;flex-direction:column;gap:7px;padding:12px;background:#192136;border:1px solid #2c3650;border-radius:11px;margin-bottom:11px}
+.fileLabel{font-weight:600;color:#e7edfa}
+input[type=file]{font-size:11px;color:#d4dff1;max-width:100%;background:#111a2a;border:1px solid #394966;border-radius:7px;padding:7px}
+input[type=file]::file-selector-button{background:#3c3267;color:#fff;border:0;border-radius:5px;padding:5px 7px;margin-right:9px;cursor:pointer}
+.checkline{display:flex;gap:8px;align-items:flex-start;color:#b5c5df;font-size:11px;line-height:1.4}
+.checkline input{flex-shrink:0;margin-top:3px}
+.import .primary{margin-top:3px}
+.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0}
+.summary>div{background:#171f34;padding:12px 4px;border-radius:9px;text-align:center}
+.summary b{display:block;font-size:19px;overflow:hidden;text-overflow:ellipsis}
+.summary small{display:block;color:#a4b3c9;font-size:10px}
+.searchRow input{width:100%;background:#111b2b;border:1px solid #3e4b62;border-radius:8px;color:#fff;padding:9px;margin-bottom:4px}
+#items{max-height:250px}#listInfo{color:#94a3b8;display:block;margin:5px 0 10px}
+.item .name{max-width:160px}
+.item button{padding:4px 6px;font-size:10px}
+#count{font-size:11px}
+#progress{white-space:pre-line;line-height:1.5;background:#141e30;border-radius:9px;padding:10px;margin:11px 0}
+.secondary{width:100%;font-size:11px;background:transparent}
+.muted{color:#a9b6cb;margin:6px 0 9px;font-size:11px}
+.info p{line-height:1.5}
