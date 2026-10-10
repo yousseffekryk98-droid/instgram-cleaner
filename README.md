@@ -1,67 +1,55 @@
-# Instagram Cleaner — Unfollow (main branch)
+# Instagram Cleaner — All-in-One
 
-A **Chrome Manifest V3** extension for reviewing and selectively unfollowing accounts on **your own Instagram account**.
+A **Chrome Manifest V3** extension combining the **Unfollow manager** and **Remove Likes assistant**.
 
-> This repository's **main** branch is the **Unfollow** edition. Other editions:
-> - [Remove Likes edition](../../tree/remove-likes)
-> - [All-in-One edition](../../tree/all-in-one)
+- [Unfollow-only (main)](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/main)
+- [Remove Likes only](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/remove-likes)
 
 ## Install
 
-1. Click **Code → Download ZIP** on this branch, then extract the ZIP.
-2. Open Chrome and visit `chrome://extensions`.
-3. Enable **Developer mode** (top-right).
-4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
-5. Sign in to your own account at https://www.instagram.com/ and reload the page.
+1. Choose **Code → Download ZIP** on this `all-in-one` branch and extract it.
+2. Go to `chrome://extensions` in Chrome, enable **Developer mode** and click **Load unpacked**.
+3. Choose the folder containing `manifest.json`.
+4. Sign in to https://www.instagram.com/ and refresh the website.
 
-No npm, build, API key, account password, or third-party service is required.
+All functionality runs locally in your browser; there is no build process or Instagram login inside the extension.
 
-## How to use Unfollow
+## Tool 1 — Unfollow
 
-1. Go to your Instagram profile and click **Following** to open the following-list dialog.
-2. Keep the dialog open. Click the extension icon → **Scan loaded items**.
-3. Check the accounts to remove or choose **Select all**. Accounts protected by **Protect selected** cannot be included; protection is saved locally.
-4. Enter a maximum batch size (**1–25**). Click **Unfollow selected** and confirm the extension's confirmation prompt.
-5. Keep the Instagram tab open while the batch runs. Instagram may ask for native confirmation; the extension looks for an **Unfollow** button.
-6. Click **Stop** to halt remaining actions. Scroll the following dialog to load more accounts and scan again as needed.
+1. On your Instagram profile, open the **Following** list.
+2. Open the extension, select the **Following** tab and click **Scan loaded**.
+3. Select the desired accounts. Optionally **Protect selected** to save protected usernames locally.
+4. Set the limit (1–25), click **Unfollow selected**, and confirm the popup.
+5. Keep the page open. The extension uses visible Following and Instagram's Unfollow confirmation buttons, with pauses between actions.
+6. Use **Stop** to halt further actions. For more accounts, scroll the Instagram Following dialog and scan again.
 
-**Important:** Scan only discovers items Instagram currently rendered, not every account you follow. Do not assume a successful count without checking Instagram. The page can change and prevent detection.
+## Tool 2 — Remove Likes
 
-## Features
+1. Open **Your activity → Interactions → Likes** on Instagram.
+2. In the extension, switch to **Liked content** and click **Scan loaded**.
+3. Press Instagram's own **Select** control to reveal selectable cards if available.
+4. Check the desired posts/Reels in the popup, or choose **Select all**.
+5. Set the limit (1–25), press **Select in Instagram**, and confirm.
+6. Review the actual selections on Instagram and press Instagram's native **Unlike** button to finish. Unlike is **not** automatically clicked.
+7. Scroll and rescan for more items.
 
-- Scan currently loaded following-list entries; add more by scrolling and rescanning.
-- Select, deselect, protect accounts; protected usernames are stored in local Chrome extension storage.
-- Small, confirmed batches with a 4.5-second pause and a 25-action upper bound.
-- Stop controls and progress/status display.
-- Only uses browser-visible Instagram controls; no private API calls or credential collection.
+## Important limitations
 
-## Known limitations & safety
-
-- Instagram changes its markup frequently. This is a best-effort DOM-assisted tool; some layouts and languages may not work.
-- **Only the Instagram web app** is supported. You must be logged in, and the Following dialog must remain open.
-- A list item not currently mounted in Instagram's DOM is skipped, not secretly loaded.
-- Instagram may impose action limits; the extension does not evade CAPTCHAs, challenges or restrictions.
-- Actions such as unfollowing are difficult to reverse. Always inspect your selection.
-- This project is not affiliated with Instagram or Meta.
-
-## Branches
-
-| Branch | Use |
-| --- | --- |
-| `main` | Unfollow accounts |
-| `remove-likes` | Select previously liked posts/Reels for Instagram's built-in Unlike flow |
-| `all-in-one` | Both tools in one extension |
-
-## Troubleshooting
-
-- **No accounts found:** Open the actual **Following** dialog on your profile, not your home feed, then rescan.
-- **Extension cannot contact page:** Reload the Instagram tab after installing or updating the extension.
-- **Missing people:** Scroll *inside* Following and scan again.
-- **Actions skipped:** Instagram may have changed the page or unloaded the row; scroll back and rescan.
-- **Restriction or challenge:** Stop using the extension and follow Instagram's on-screen guidance.
+- The tool sees only Instagram items currently rendered in the page, not your full historical data.
+- DOM markup, labels and native checkbox controls vary and can change without notice.
+- Likes selection works only where native checkboxes are detectable; otherwise complete selection manually on Instagram.
+- Instagram may limit activity. The extension does not bypass account restrictions, login challenges or security checks.
+- Unfollow is hard to undo. Always carefully review the selected people.
+- While the extension is running, do not navigate the active Instagram tab away from the relevant list.
 
 ## Privacy
 
-No analytics, tracking pixels, server endpoints, or credential capture. Only the Instagram website is targeted; protected usernames remain in `chrome.storage.local`.
+No password capture, external analytics, remote servers or direct Instagram private API use. Protected usernames are saved to Chrome's local extension storage. This independent project is not associated with Instagram or Meta.
 
-Licensed for personal educational use; review Instagram's terms before operating automation.
+## Branches
+
+| Branch | Edition |
+|---|---|
+| `main` | Unfollow only |
+| `remove-likes` | Liked content selection assistant |
+| `all-in-one` | Both features |
