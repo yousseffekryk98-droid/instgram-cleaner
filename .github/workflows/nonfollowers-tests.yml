@@ -1,0 +1,26 @@
+name: Test Nonfollowers Extension
+on:
+  push:
+    branches: [not-following-back]
+  pull_request:
+    paths:
+      - background.js
+      - compare.js
+      - tests/**
+      - .github/workflows/nonfollowers-tests.yml
+jobs:
+  extension-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check JavaScript syntax
+        run: |
+          node --check background.js
+          node --check content.js
+          node --check compare.js
+          node --check popup.js
+      - name: Run comparison and queue regression tests
+        run: node --test tests/compare.test.js tests/queue.test.js
