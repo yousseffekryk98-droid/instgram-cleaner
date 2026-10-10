@@ -74,6 +74,13 @@
       const candidates = nativeButtons(dialog).filter(b => unlikeText(buttonText(b)));
       if (candidates.length === 1) return candidates[0];
       if (candidates.length > 1) return null;
+      // Some confirmation sheets use plain text labels inside a clickable row.
+      // Click only if a single exact Unlike label exists in the visible dialog.
+      const labels = [...dialog.querySelectorAll('span,div')]
+        .filter(el => visible(el) && !el.children.length &&
+          unlikeText(el.innerText || el.textContent));
+      if (labels.length === 1) return labels[0];
+      if (labels.length > 1) return null;
     }
     return null;
   }
@@ -178,7 +185,7 @@
     const waitMs = Math.max(MIN_WAIT_MS, Math.min(120000, Number(options?.waitSeconds || 15) * 1000));
     executing = true;
     stopRequested = false;
-    const prior = ['paused','interrupted','finished'].includes(status.state) ?
+    const prior = ['paused','interrupted'].includes(status.state) ?
       status : null;
     const verified = prior && options?.resume ? prior.verified : 0;
     const batches = prior && options?.resume ? prior.batches : 0;
