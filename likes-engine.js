@@ -18,7 +18,7 @@
   function buttonText(button) {
     return normalized(button.innerText || button.textContent || button.getAttribute('aria-label'));
   }
-  const isUnlikeText = text => /^(unlike|remove likes?|إلغاء الإعجاب|إلغاء تسجيل الإعجاب)(?:\s*\(?\d+\)?)?$/i.test(normalized(text));
+  const isUnlikeText = text => /^(unlike|remove likes?|إلغاء الإعجاب|إلغاء تسجيل الإعجاب)(?:\s*[(:·-]?\s*\d+(?:\s+(?:posts?|reels?|videos?|items?))?\)?)?$/i.test(normalized(text));
   const isSelectText = text => /^(select|تحديد|اختيار)$/i.test(normalized(text));
   function findUnlikeButton() {
     if (!isLikesPage()) return null;
@@ -40,14 +40,16 @@
     return leaves[0];
   }
   function selectionCount() {
-    // Look for the small native "1 selected" text, never search an entire container's text.
+    // Look for the native count label rather than counting thumbnails or popup inputs.
     const els = document.querySelectorAll('span,div,p');
     let count = null;
     for (const el of els) {
       if (!visible(el) || el.childElementCount > 2) continue;
       const content = normalized(el.innerText || el.textContent);
-      const match = content.match(/^(\d{1,5})\s+(?:selected|selected items?)$/i)
-        || content.match(/^تم تحديد\s*(\d{1,5})$/);
+      const match = content.match(/^(\d{1,5})\s+(?:selected|items? selected|posts? selected|reels? selected)$/i)
+        || content.match(/^selected\s*:?\s*(\d{1,5})$/i)
+        || content.match(/^تم تحديد\s*(\d{1,5})$/)
+        || content.match(/^(\d{1,5})\s*محدد(?:ة)?$/);
       if (match) {
         const n = Number(match[1]);
         if (Number.isSafeInteger(n)) count = n;
@@ -109,9 +111,18 @@
     return winner || (result.length === 1 ? result : []);
   }
   function clickableMedia(media) {
-    // Clicking media inside Instagram's SELECT mode bubbles through the card's React handler.
-    // Never click a card if Select mode cannot be independently established.
-    return media;
+    // Prefer an actual card control, but only if its bounds fit ONE thumbnail.
+    // The React click handler sometimes lives on the card instead of the img.
+    const r = media.getBoundingClientRect();
+    for (let node = media; node && node !== roots(); node = node.parentElement) {
+      const rect = node.getBoundingClientRect?.();
+      if (rect && (rect.width > r.width * 1.6 || rect.height > r.height * 1.65)) break;
+      if (node.matches?.('button,[role="button"],[role="checkbox"],label,[tabindex="0"]')) {
+        return node;
+      }
+    }
+    return media.parentElement?.getBoundingClientRect?.().width <= r.width * 1.6
+      ? media.parentElement : media;
   }
   function cardCheckbox(media) {
     // Stay inside this one media tile; never borrow a checkbox from an adjacent tile.
@@ -196,7 +207,10 @@
     if (!entry.media.isConnected) return { ok:false, reason:'Tile was removed while selecting.' };
     const target = checkbox || clickableMedia(entry.media);
     target.click();
-    await pause(350);
+    await pause(650);
+    if (!isLikesPage()) return {
+      ok: false, reason: 'Instagram opened a post instead of selecting it. Stopped to avoid wrong clicks.'
+    };
     const countAfter = selectionCount();
     const nextCheckbox = cardCheckbox(entry.media);
     const isCheckedNow = checkboxSelected(nextCheckbox);
@@ -227,8 +241,23 @@
         '. Complete any Instagram confirmation and check the Likes grid to verify removal.'
     };
   }
+  function diagnostics() {
+    const data = scan();
+    const labels = nativeButtons().map(buttonText);
+    return {
+      page: isLikesPage() ? 'Likes activity' : 'Wrong page',
+      loadedTiles: data.items?.length || 0,
+      selectedOnInstagram: selectionCount(),
+      nativeUnlikeControls: labels.filter(isUnlikeText).length,
+      nativeSelectControls: labels.filter(isSelectText).length,
+      visibleSelectionCheckboxes: [...document.querySelectorAll(
+        'input[type="checkbox"],[role="checkbox"]')].filter(visible).length,
+      hasUnlikeAction: !!findUnlikeButton(),
+      error: data.error || null
+    };
+  }
   globalThis.InstagramLikesUI = Object.freeze({
-    scan, selectItem, selectionCount, unlikeNative, isLikesPage,
+    scan, selectItem, selectionCount, unlikeNative, isLikesPage, diagnostics,
     // Pure helpers exposed for regression tests.
     shortHash, isUnlikeText, isSelectText
   });
