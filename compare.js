@@ -44,13 +44,14 @@
     if (kind !== 'followers' && kind !== 'following') throw Error('Invalid export type.');
     const entries = entriesFor(payload, kind);
     const users = new Set();
+    let recognizedRows = 0;
     for (const row of entries) {
       const name = extractUsername(row);
-      if (name) users.add(name);
+      if (name) { users.add(name); recognizedRows++; }
     }
     if (!users.size) throw Error('The ' + kind + ' file has no recognizable usernames. Check its format and select the correct file.');
-    // Refuse suspiciously malformed data rather than silently treating the missing followers as non-followers.
-    if (users.size / entries.length < 0.7) throw Error('Too many ' + kind + ' records could not be parsed. This format is not supported.');
+    // Count parsed ROWS, not unique usernames: valid duplicated usernames must not look malformed.
+    if (recognizedRows / entries.length < 0.7) throw Error('Too many ' + kind + ' records could not be parsed. This format is not supported.');
     return users;
   }
   function compareExports(followerPayloads, followingPayloads) {
