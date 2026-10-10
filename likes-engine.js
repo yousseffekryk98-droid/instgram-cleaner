@@ -100,9 +100,14 @@
     return media;
   }
   function cardCheckbox(media) {
+    // Stay inside this one media tile; never borrow a checkbox from an adjacent tile.
+    const baseRect = media.getBoundingClientRect();
     let cursor = media;
     for (let i = 0; cursor && i < 5; i++, cursor = cursor.parentElement) {
-      const box = cursor.querySelector('input[type="checkbox"],[role="checkbox"]');
+      const bounds = cursor.getBoundingClientRect?.();
+      if (bounds && (bounds.width > baseRect.width * 1.6 ||
+        bounds.height > baseRect.height * 1.65)) break;
+      const box = cursor.querySelector?.('input[type="checkbox"],[role="checkbox"]');
       if (box && visible(box)) return box;
     }
     return null;
