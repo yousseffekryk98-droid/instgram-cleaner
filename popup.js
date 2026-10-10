@@ -21,6 +21,7 @@
       : 'Open your profile → Following list. Scan loaded accounts, choose who to unfollow, then run a small batch.';
     $('start').textContent = mode === 'likes' ? 'Select in Instagram' : 'Unfollow selected';
     $('protectRow').hidden = mode !== 'unfollow';
+    $('likesFinish').hidden = mode !== 'likes';
     $('count').textContent = data.items.length + ' loaded · ' + data.selected.length + ' selected';
     $('items').innerHTML = data.items.length
       ? data.items.map(item => `<div class="item" role="listitem"><label><input type="checkbox" data-key="${escapeHTML(item.key)}" ${data.selected.includes(item.key) ? 'checked' : ''} ${item.protected ? 'disabled' : ''}><span class="name" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</span></label>${item.protected ? '<span class="protected">Protected</span>' : ''}<a target="_blank" rel="noopener noreferrer" href="${escapeHTML(item.url)}">View ↗</a></div>`).join('')
@@ -75,6 +76,10 @@
     await send('START', { limit });
   });
   attach('stop', () => send('STOP'));
+  attach('finishLikes', async () => {
+    if (!confirm('Press Instagram’s Unlike control for the posts currently selected on Instagram? Review your selections first. Instagram may require a second confirmation.')) return;
+    await send('UNLIKE');
+  });
   $('items').addEventListener('change', e => {
     if (e.target.matches('input[data-key]')) {
       void send('TOGGLE', { key: e.target.dataset.key, checked: e.target.checked });
