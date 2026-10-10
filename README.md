@@ -9,7 +9,7 @@ A Chrome Manifest V3 extension for finding Instagram accounts **you follow that 
 1. Compares **Instagram's own exported JSON data**: Following minus Followers.
 2. Shows non-followers in a searchable list.
 3. Allows **select all, individual selection, protect accounts**, and clearing selections.
-4. After your explicit confirmation, saves up to 5,000 selected usernames in a queue and opens each profile in turn. The Chrome alarm scheduler wakes the extension for the next account approximately every 30 seconds or later.
+4. After your explicit confirmation, saves up to 5,000 selected usernames in a queue and opens each profile in turn. The Chrome alarm scheduler wakes the extension for the next account approximately 5 seconds after the prior account finishes while the extension worker stays active, with a 30-second-or-longer Chrome alarm fallback if suspended.
 5. Marks an action successful only if the profile visibly changes to **Follow** (or was already not followed), and reports skipped/uncertain actions separately.
 6. Provides **Stop**; it does not send private Instagram API requests or attempt to get around action limits.
 
@@ -119,3 +119,11 @@ The tests cover username normalization, common JSON formats and malformed data, 
 ## v1.2 queue fix
 
 Earlier versions ran a long async loop in a Manifest V3 service worker. Chrome may suspend that worker after an account, leaving only the first unfollow completed. Version 1.2 uses a **durable saved queue** and Chrome alarms to wake one account at a time. The queue supports **0 = all selected** (maximum 5,000) and stops for account restrictions. It never attempts to bypass Instagram's limits. Reinstall or reload the extension in `chrome://extensions` **and sign in to the correct Instagram account** before starting a new queue.
+
+## v1.3 — Faster unfollow queue (5-second active interval)
+
+After an account finishes, the extension schedules the next profile **approximately 5 seconds later** using its background worker. Profile loading, Instagram UI confirmations, network delays, and browser scheduling are additional time, so **5 seconds is not a guaranteed per-account completion time**.
+
+Chrome Manifest V3 service workers can sleep, and Chrome alarms cannot reliably wake a worker every 5 seconds. A **30-second or longer fallback** alarm remains in place so a sleeping worker can pick up the saved queue without silently losing progress. The fallback is cancelled when the fast timer works. User Stop cancels both, and Instagram action restrictions still stop the queue. This setting is not an attempt to avoid platform limits.
+
+Update by replacing the extension files, opening `chrome://extensions`, clicking **Reload** on the extension, then refreshing Instagram. Start a new queue after updating; an existing run may have used older timers.
