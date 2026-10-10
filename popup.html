@@ -3,32 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Instagram Cleaner</title>
+  <title>Instagram Cleaner — Not Following Back</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main>
-    <header><span class="brand">◎</span><div><h1>Instagram Cleaner</h1><small>User-controlled account cleanup</small></div><span class="version">v1.0</span></header>
+    <header>
+      <span class="brand" aria-hidden="true">◎</span>
+      <div><h1>Not Following Back</h1><small>Instagram Cleaner · Private local comparison</small></div>
+      <span class="version">v1.1</span>
+    </header>
     <section class="info">
-      <strong id="modeTitle">Unfollow manager</strong>
-      <p id="guide">Open your Following list in Instagram, then scan and select accounts.</p>
+      <strong>1. Export your Instagram data</strong>
+      <p>Instagram → Settings → Accounts Center → Your information and permissions → Download your information. Request <b>Followers and following</b>, <b>All time</b>, in <b>JSON</b> format. Unzip it on your computer.</p>
+      <p>Choose <code>followers_1.json</code> (and any other <code>followers_*.json</code>) and <code>following.json</code> from <b>the same account and export</b>.</p>
     </section>
-    <nav id="modeNav" aria-label="Cleanup mode">
-      <button data-mode="unfollow" class="active">Following</button>
-      <button data-mode="likes">Liked content</button>
-    </nav>
-    <div class="row"><button class="primary" id="open">Open Instagram ↗</button><button id="scan">Scan loaded</button></div>
-    <div id="notice" role="status" aria-live="polite">Open Instagram and sign in to get started.</div>
-    <div class="tools"><span id="count">0 loaded · 0 selected</span><div><button id="all">Select all</button><button id="clear">Clear</button></div></div>
-    <div id="items" role="list"><p class="empty">No items scanned yet.</p></div>
-    <div class="row" id="protectRow"><button id="protect">Protect selected</button><button id="unprotect">Unprotect loaded</button></div>
-    <div class="limit"><label for="max">Items this run</label><input id="max" type="number" value="10" min="1" max="25"><small>Maximum 25 per run</small></div>
-    <div class="row"><button class="danger" id="start">Unfollow selected</button><button id="stop" disabled>Stop</button></div>
-    <div class="row" id="likesFinish" hidden><button id="finishLikes" class="danger">Unlike selected in Instagram</button></div>
-    <p id="progress" aria-live="polite"></p>
-    <footer>No passwords or external servers. Instagram may restrict repetitive activity. Review selections carefully.</footer>
+    <section class="import">
+      <label class="fileLabel" for="followers">Followers JSON file(s)</label>
+      <input id="followers" type="file" multiple accept=".json,application/json">
+      <label class="fileLabel" for="following">Following JSON file(s)</label>
+      <input id="following" type="file" multiple accept=".json,application/json">
+      <label class="checkline"><input id="verified" type="checkbox"><span>I selected all follower files from the same account/export, using All time. I understand an incomplete export may show false non-followers.</span></label>
+      <button id="import" class="primary">Compare Followers vs Following</button>
+    </section>
+    <div id="notice" role="status" aria-live="polite">No Instagram data has been imported.</div>
+    <section class="summary" id="summary" hidden>
+      <div><b id="followersCount">0</b><small>Followers</small></div>
+      <div><b id="followingCount">0</b><small>Following</small></div>
+      <div><b id="nonfollowersCount">0</b><small>Not following back</small></div>
+    </section>
+    <section id="results" hidden>
+      <h2>2. Review who to unfollow</h2>
+      <div class="searchRow"><input id="search" type="search" placeholder="Filter usernames…" aria-label="Filter usernames"></div>
+      <div class="tools">
+        <span id="count">0 selected</span>
+        <div><button id="selectAll">Select all</button><button id="clearSelection">Clear</button></div>
+      </div>
+      <div id="items" role="list" aria-label="Accounts not following you back"></div>
+      <small id="listInfo"></small>
+      <div class="row">
+        <button id="protect">Protect selected</button>
+        <button id="showProtected">Show protected</button>
+      </div>
+      <h2>3. Unfollow your selection</h2>
+      <p class="muted">The extension opens Instagram profiles in a separate tab and only clicks visible Following → Unfollow controls. Choose a small batch and verify the results in Instagram.</p>
+      <div class="limit"><label for="limit">Maximum per batch</label><input id="limit" type="number" min="1" max="10" value="5"><small>1–10 accounts</small></div>
+      <div class="row"><button id="start" class="danger">Unfollow selected</button><button id="stop" disabled>Stop</button></div>
+      <button id="clearImport" class="secondary">Clear imported data from this browser</button>
+    </section>
+    <div id="progress" role="status" aria-live="polite"></div>
+    <footer>No password collection or private API calls. Your import stays in this Chrome extension's local storage; Chrome may sync neither data nor progress. Instagram's website and policies may limit automation. Not affiliated with Meta.</footer>
   </main>
-  <script src="config.js"></script>
+  <script src="compare.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
