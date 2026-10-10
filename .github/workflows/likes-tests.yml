@@ -1,0 +1,26 @@
+name: Test Instagram Likes adapter
+on:
+  push:
+    branches: [remove-likes, all-in-one]
+  pull_request:
+    paths:
+      - likes-engine.js
+      - content.js
+      - popup.js
+      - tests/**
+      - .github/workflows/likes-tests.yml
+jobs:
+  likes-adapter-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check extension JS syntax
+        run: |
+          node --check likes-engine.js
+          node --check content.js
+          node --check popup.js
+      - name: Run Likes regression tests
+        run: node --test tests/likes-engine.test.js
