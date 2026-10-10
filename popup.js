@@ -4,6 +4,7 @@
   const variant = window.CLEANER_VARIANT || 'unfollow';
   let mode = variant === 'likes' ? 'likes' : 'unfollow';
   let tabId = null;
+  let autoStatus = { state: 'idle', verified: 0, batches: 0, message: 'No automatic run yet.' };
   let data = { items: [], selected: [], running: false, done: 0, skipped: 0, instagramSelected: null };
   const escapeHTML = input => String(input).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -22,6 +23,17 @@
     $('start').textContent = mode === 'likes' ? 'Select in Instagram' : 'Unfollow selected';
     $('protectRow').hidden = mode !== 'unfollow';
     $('likesFinish').hidden = mode !== 'likes';
+    $('autoLikes').hidden = mode !== 'likes';
+    const autoRunning = autoStatus.state === 'running';
+    $('autoStart').disabled = autoRunning || !$('autoConsent').checked;
+    $('autoStop').disabled = !autoRunning;
+    $('autoStart').textContent = ['paused', 'interrupted'].includes(autoStatus.state)
+      ? 'Resume automatic cleanup' : 'Start automatic cleanup';
+    $('autoProgress').textContent =
+      'Status: ' + (autoStatus.state || 'idle') +
+      ' · Observed: ' + (autoStatus.verified || 0) +
+      ' · Batches: ' + (autoStatus.batches || 0) +
+      '\n' + (autoStatus.message || '');
     $('count').textContent = data.items.length + ' loaded · ' + data.selected.length + ' selected in extension' +
       (mode === 'likes' && data.instagramSelected !== null ? ' · ' + data.instagramSelected + ' selected on Instagram' : '');
     $('items').innerHTML = data.items.length
@@ -78,6 +90,29 @@
     await send('START', { limit });
   });
   attach('stop', () => send('STOP'));
+  attach('autoStart', async () => {
+    if (mode !== 'likes') return;
+    if (!$('autoConsent').checked) {
+      notice('First confirm that automatic unlikes can change your account.');
+      return;
+    }
+    const batchSize = Math.max(1, Math.min(20, Number($('autoBatch').value) || 10));
+    const target = Math.max(1, Math.min(10000, Number($('autoTarget').value) || 5000));
+    const waitSeconds = Math.max(10, Math.min(120, Number($('autoWait').value) || 15));
+    const resume = ['paused','interrupted'].includes(autoStatus.state);
+    if (!confirm('Automatically unlike up to ' + target +
+      ' posts using Instagram’s visible page controls in groups of ' + batchSize +
+      '? This is difficult to reverse. The process stops on restrictions or unverified results.')) return;
+    const result = await send('LIKES_AUTO_START', {
+      options: { batchSize, target, waitSeconds, resume }
+    });
+    if (result?.state) { autoStatus = result.state; render(); }
+  });
+  attach('autoStop', async () => {
+    const response = await send('LIKES_AUTO_STOP');
+    if (response?.state) { autoStatus = response.state; render(); }
+  });
+  $('autoConsent').addEventListener('change', render);
   attach('finishLikes', async () => {
     if (!confirm('Press Instagram’s Unlike control for the posts currently selected on Instagram? Review your selections first. Instagram may require a second confirmation.')) return;
     await send('UNLIKE');
@@ -96,10 +131,26 @@
     void send('STATUS');
   });
   chrome.runtime.onMessage.addListener(message => {
+    if (message.kind === 'LIKES_AUTO_PROGRESS' && message.state) {
+      autoStatus = message.state;
+      render();
+    }
     if (message.kind === 'CLEANER_PROGRESS' && message.mode === mode) {
       data = message.snapshot;
       render();
       notice(message.message);
+    }
+  });
+  chrome.storage.local.get('instagramLikesAutopilotStatus', data => {
+    if (data?.instagramLikesAutopilotStatus) {
+      autoStatus = data.instagramLikesAutopilotStatus;
+      render();
+    }
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.instagramLikesAutopilotStatus?.newValue) {
+      autoStatus = changes.instagramLikesAutopilotStatus.newValue;
+      render();
     }
   });
   render();
