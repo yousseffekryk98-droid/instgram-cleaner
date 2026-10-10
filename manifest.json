@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Instagram Cleaner - Unfollow",
+  "version": "1.0.0",
+  "description": "Instagram following list cleanup assistant",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.instagram.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.instagram.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
