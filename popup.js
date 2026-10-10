@@ -31,6 +31,7 @@
       ? 'Resume automatic cleanup' : 'Start automatic cleanup';
     $('autoProgress').textContent =
       'Status: ' + (autoStatus.state || 'idle') +
+      ' · Step: ' + (autoStatus.phase || 'Waiting') +
       ' · Observed: ' + (autoStatus.verified || 0) +
       ' · Batches: ' + (autoStatus.batches || 0) +
       '\n' + (autoStatus.message || '');
@@ -111,6 +112,20 @@
   attach('autoStop', async () => {
     const response = await send('LIKES_AUTO_STOP');
     if (response?.state) { autoStatus = response.state; render(); }
+  });
+  attach('autoDiagnostics', async () => {
+    const result = await send('LIKES_AUTO_DIAG');
+    if (result?.diagnostics) {
+      const safeText = JSON.stringify(result.diagnostics, null, 2);
+      try {
+        await navigator.clipboard.writeText(safeText);
+        notice('Diagnostic summary copied. It contains no usernames, passwords or media URLs.');
+      } catch {
+        notice('Could not copy diagnostics automatically. Step: ' +
+          (result.diagnostics.phase || 'unknown') +
+          '; scanned ' + (result.diagnostics.loadedTiles || 0) + ' tiles.');
+      }
+    }
   });
   $('autoConsent').addEventListener('change', render);
   attach('finishLikes', async () => {
