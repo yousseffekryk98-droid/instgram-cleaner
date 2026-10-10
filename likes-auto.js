@@ -131,7 +131,7 @@
     await waitSafely(700);
     const countAfter = selected();
     if (countAfter !== null && countAfter > (countBefore ?? 0)) {
-      return { ok: true, selectedNow: countAfter };
+      return { ok: true, selectedNow: countAfter, selectedSource: first.source };
     }
     return {
       ok: false,
@@ -178,7 +178,7 @@
     const waitMs = Math.max(MIN_WAIT_MS, Math.min(120000, Number(options?.waitSeconds || 15) * 1000));
     executing = true;
     stopRequested = false;
-    const prior = status.state === 'paused' || status.state === 'interrupted' ?
+    const prior = ['paused','interrupted','finished'].includes(status.state) ?
       status : null;
     const verified = prior && options?.resume ? prior.verified : 0;
     const batches = prior && options?.resume ? prior.batches : 0;
@@ -213,17 +213,22 @@
             ' posts selected, exceeding this batch size. Clear the native selection or increase batch size.');
         }
         let selectedInBatch = nativeCount || 0;
-        if (nativeCount === null) {
+        const selectedSources = new Set();
+        // If Instagram already has a manually selected batch, process that
+        // without toggling those cards off. The next batch is fully automatic.
+        const processExistingSelection = nativeCount !== null && nativeCount > 0;
+        if (!processExistingSelection && nativeCount === null) {
           const activation = await activateSelection(items[0]);
           if (!activation.ok) throw new Error(activation.reason);
           selectedInBatch += activation.selectedNow;
+          if (activation.selectedSource) selectedSources.add(activation.selectedSource);
         }
-        const selectedSources = new Set();
         let ambiguous = false;
-        for (const item of items) {
+        for (const item of processExistingSelection ? [] : items) {
           ensureSafe();
           if (selectedInBatch >= remaining) break;
-          if (!item.media?.isConnected || stalled.has(item.source) || completed.has(item.source)) continue;
+          if (!item.media?.isConnected || selectedSources.has(item.source) ||
+              stalled.has(item.source) || completed.has(item.source)) continue;
           item.media.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
           const result = await ui.selectItem(item);
           if (result.ok) {
