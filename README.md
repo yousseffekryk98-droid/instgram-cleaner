@@ -1,67 +1,117 @@
-# Instagram Cleaner — Unfollow (main branch)
+# Instagram Cleaner — Not Following Back
 
-A **Chrome Manifest V3** extension for reviewing and selectively unfollowing accounts on **your own Instagram account**.
+A Chrome Manifest V3 extension for finding Instagram accounts **you follow that do not follow you back**, reviewing them, and optionally unfollowing in small, user-confirmed batches.
 
-> This repository's **main** branch is the **Unfollow** edition. Other editions:
-> - [Remove Likes edition](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/remove-likes)
-> - [All-in-One edition](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/all-in-one)
+**Branch:** `not-following-back` — separate from the existing [`main` Unfollow extension](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/main). The main branch is unchanged.
 
-## Install
+## What it does
 
-1. Click **Code → Download ZIP** on this branch, then extract the ZIP.
-2. Open Chrome and visit `chrome://extensions`.
-3. Enable **Developer mode** (top-right).
-4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
-5. Sign in to your own account at https://www.instagram.com/ and reload the page.
+1. Compares **Instagram's own exported JSON data**: Following minus Followers.
+2. Shows non-followers in a searchable list.
+3. Allows **select all, individual selection, protect accounts**, and clearing selections.
+4. On your explicit confirmation, opens each selected Instagram profile and tries the native **Following → Unfollow** controls, in batches of **at most 10**.
+5. Marks an action successful only if the profile visibly changes to **Follow** (or was already not followed), and reports skipped/uncertain actions separately.
+6. Provides **Stop**; it does not send private Instagram API requests or attempt to get around action limits.
 
-No npm, build, API key, account password, or third-party service is required.
+> **Why an export?** Instagram only renders a subset of a long Followers/Following list. Assuming that an unloaded person is not following you would produce **false positives**. This edition uses the exported lists instead. Exports reflect the **time they were generated**, not live follower status.
 
-## How to use Unfollow
+## 1. Install (desktop Chrome)
 
-1. Go to your Instagram profile and click **Following** to open the following-list dialog.
-2. Keep the dialog open. Click the extension icon → **Scan loaded items**.
-3. Check the accounts to remove or choose **Select all**. Accounts protected by **Protect selected** cannot be included; protection is saved locally.
-4. Enter a maximum batch size (**1–25**). Click **Unfollow selected** and confirm the extension's confirmation prompt.
-5. Keep the Instagram tab open while the batch runs. Instagram may ask for native confirmation; the extension looks for an **Unfollow** button.
-6. Click **Stop** to halt remaining actions. Scroll the following dialog to load more accounts and scan again as needed.
+1. In GitHub, switch to the [**not-following-back** branch](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/not-following-back).
+2. Click **Code → Download ZIP** and extract it.
+3. On desktop Chrome, open `chrome://extensions`.
+4. Enable **Developer mode**.
+5. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
+6. Sign in to **your own account** at https://www.instagram.com/ and refresh the page.
 
-**Important:** Scan only discovers items Instagram currently rendered, not every account you follow. Do not assume a successful count without checking Instagram. The page can change and prevent detection.
+No build, npm, account-password input, or external API key required. **Chrome for Android does not support normal desktop Chrome extensions.**
 
-## Features
+## 2. Download the correct Instagram data
 
-- Scan currently loaded following-list entries; add more by scrolling and rescanning.
-- Select, deselect, protect accounts; protected usernames are stored in local Chrome extension storage.
-- Small, confirmed batches with a 4.5-second pause and a 25-action upper bound.
-- Stop controls and progress/status display.
-- Only uses browser-visible Instagram controls; no private API calls or credential collection.
+1. Open Instagram **Settings → Accounts Center → Your information and permissions → Download your information**.
+2. Choose your Instagram account and select **Some of your information → Followers and following** (the location/label may vary).
+3. Choose **All time** as the date range, and **JSON** (not HTML) for the format.
+4. Request/download your data and unzip the downloaded archive.
+5. Locate the files in a directory often named `connections/followers_and_following/`:
+   - `followers_1.json` — **select every `followers_*.json` if your export contains multiple files**
+   - `following.json` — select `following_*.json` too if provided
 
-## Known limitations & safety
+Use **the same, recently generated export and the same account** for both groups. An incomplete Followers dataset can incorrectly classify people as non-followers. Private accounts are supported only to the extent the export contains their usernames.
 
-- Instagram changes its markup frequently. This is a best-effort DOM-assisted tool; some layouts and languages may not work.
-- **Only the Instagram web app** is supported. You must be logged in, and the Following dialog must remain open.
-- A list item not currently mounted in Instagram's DOM is skipped, not secretly loaded.
-- Instagram may impose action limits; the extension does not evade CAPTCHAs, challenges or restrictions.
-- Actions such as unfollowing are difficult to reverse. Always inspect your selection.
-- This project is not affiliated with Instagram or Meta.
+### Example data format
 
-## Branches
+Some exports contain:
+```json
+[
+  {
+    "title": "",
+    "string_list_data": [
+      { "href": "https://www.instagram.com/example/", "value": "example", "timestamp": 12345 }
+    ]
+  }
+]
+```
 
-| Branch | Use |
+The following file may instead contain an object with a `relationships_following` array. The extension supports both common layouts, converts usernames to lowercase, deduplicates names, and rejects unfamiliar or mostly invalid files.
+
+## 3. Compare and review
+
+1. Open the extension. Under **Followers JSON file(s)** select `followers_1.json` and any additional `followers_N.json` files.
+2. Under **Following JSON file(s)** select `following.json` or additional `following_N.json` files.
+3. Check the box confirming the export is complete, from the same account, and covers **All time**.
+4. Click **Compare Followers vs Following**, then confirm saving the *comparison results* in the extension's local Chrome storage.
+5. Review the totals for **Followers**, **Following**, and **Not following back**.
+6. Search by username, select accounts individually or use **Select all**.
+7. Use **Protect selected** to ensure selected names cannot be unfollowed by this extension. Click **Show protected** and then **Unprotect** to reverse this.
+
+There are no unfollows during the compare step. You must explicitly select accounts and start a run.
+
+## 4. Unfollow non-followers
+
+1. Make sure Chrome's Instagram website is signed in to **the same account used to create the JSON export**.
+2. Review the checked usernames. Set **Maximum per batch** (1–10, default 5).
+3. Click **Unfollow selected** and approve the confirmation prompt.
+4. The extension creates an Instagram tab and opens each requested profile. It checks the username in the URL before interacting.
+5. When it uniquely recognizes **Following** and then **Unfollow**, it clicks those native visible controls. It allows a delay between accounts and does **not** access Instagram's private APIs.
+6. The popup shows completed and skipped counts. Click **Stop** to prevent further profiles from being processed; an action already in progress may finish.
+7. Verify the resulting following status in Instagram. You can reopen the popup at any time to check the last batch. Run another small batch if you want to continue.
+
+If Instagram changes its buttons, shows a security challenge, or an unfollow cannot be verified, that account is **skipped rather than claimed as a success**. Never assume the number of accounts reported as processed equals the number actually unfollowed. A success labeled **already-not-following** means Instagram already showed a Follow button.
+
+### Cautions
+
+- Unfollowing is hard to reverse. Confirm exactly who you selected; protect friends you want to keep.
+- Instagram may restrict repetitive activity. This extension does **not** bypass limitations, CAPTCHA or login challenges. If you see a restriction, stop and follow Instagram's instructions.
+- The exported relationship snapshot may be old. Someone may have followed you after the export. Get a new export if up-to-date results matter.
+- Chrome's service worker may be interrupted by browser restart or resource limits; interrupted work stops, and its progress may need to be refreshed. This is a best-effort browser UI assistant, not a guaranteed automation service.
+- Private profiles, localized Instagram UIs, changed layouts, popup timing, and login state can affect operation.
+- You cannot use the extension to manipulate an account you are not logged into. **Only use it on your own account.**
+
+## Privacy and storage
+
+- Upload inputs are processed with browser JavaScript **locally**. No follower list or export is uploaded to a remote server.
+- It saves only the **non-follower username comparison results**, counts, selected and protected usernames, and last-run status in `chrome.storage.local`. It does not keep raw follower/following JSON documents.
+- No analytics, passwords, trackers, or private Instagram endpoints.
+- **Clear imported data from this browser** removes comparison results, selections, protections, and progress.
+- The extension requests `storage`, `tabs`, and `https://www.instagram.com/*` access because it opens Instagram tabs, remembers your selection, and operates visible Instagram page controls.
+
+## Developer / tests
+
+No dependencies are required. With Node.js 18+ installed:
+
+```bash
+node --test tests/compare.test.js
+```
+
+The tests cover username normalization, common Instagram JSON formats, multiple follower files, deduplication, and rejection of malformed inputs. The profile interaction needs manual live testing on an Instagram account and may break if Instagram changes its markup.
+
+## Other editions
+
+| Branch | Function |
 | --- | --- |
-| `main` | Unfollow accounts |
-| `remove-likes` | Select previously liked posts/Reels for Instagram's built-in Unlike flow |
-| `all-in-one` | Both tools in one extension |
+| [`main`](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/main) | Manual selection to unfollow |
+| [`remove-likes`](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/remove-likes) | Manage likes |
+| [`all-in-one`](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/all-in-one) | Following + likes |
+| **`not-following-back`** | Export-based follower comparison + selective unfollow |
 
-## Troubleshooting
-
-- **No accounts found:** Open the actual **Following** dialog on your profile, not your home feed, then rescan.
-- **Extension cannot contact page:** Reload the Instagram tab after installing or updating the extension.
-- **Missing people:** Scroll *inside* Following and scan again.
-- **Actions skipped:** Instagram may have changed the page or unloaded the row; scroll back and rescan.
-- **Restriction or challenge:** Stop using the extension and follow Instagram's on-screen guidance.
-
-## Privacy
-
-No analytics, tracking pixels, server endpoints, or credential capture. Only the Instagram website is targeted; protected usernames remain in `chrome.storage.local`.
-
-Review Instagram's terms before operating automated account actions.
+**Independent project; not endorsed by Instagram or Meta.**
