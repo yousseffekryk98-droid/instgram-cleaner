@@ -261,8 +261,11 @@
           selected: nativeCount,
           message: 'Selected ' + nativeCount + ' on Instagram. Using Instagram’s native Unlike action…'
         });
-        // Capture the pre-action grid for observable confirmation.
-        const before = allMediaSources();
+        // Verify selected tiles disappear, rather than an unrelated grid tile.
+        // For a manually selected initial batch we lack item identities; use the
+        // broader visible grid and label the result as a UI observation only.
+        const before = selectedSources.size
+          ? new Set(selectedSources) : allMediaSources();
         const action = ui.unlikeNative();
         if (action.error) throw new Error(action.error);
         const confirmation = await awaitConfirmationOrUpdate(before, nativeCount);
