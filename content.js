@@ -8,8 +8,11 @@
   const FOLLOW = new Set(['follow', 'متابعة']);
   const UNFOLLOW = new Set(['unfollow', 'إلغاء المتابعة']);
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-  const text = el => String(el?.innerText || el?.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-  const buttons = root => [...root.querySelectorAll('button,[role="button"]')];
+  const text = el => String(el?.innerText || el?.textContent ||
+    el?.getAttribute?.('aria-label') || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const buttons = root => [...root.querySelectorAll(
+    'button,[role="button"],[role="menuitem"],[role="option"]'
+  )];
   const visible = el => !!el?.isConnected && !!el.getClientRects().length &&
     !el.disabled && el.getAttribute('aria-disabled') !== 'true';
   const candidates = (root, labels) => buttons(root).filter(el => visible(el) && labels.has(text(el)));
@@ -42,12 +45,19 @@
   }
 
   function unfollowOption() {
-    const scopes = [...document.querySelectorAll('[role="dialog"],[role="menu"]')].filter(visible);
+    const scopes = [...document.querySelectorAll(
+      '[role="dialog"],[role="menu"],[role="alertdialog"]'
+    )].filter(visible);
     const matches = scopes.flatMap(scope => candidates(scope, UNFOLLOW));
     const unique = [...new Set(matches)];
     if (unique.length === 1) return unique[0];
-    // Some Instagram UI builds use a portaled popup without dialog/menu semantics.
-    // Only accept a single, visible option *outside* the main profile content.
+    if (unique.length > 1) return null;
+    // Instagram sometimes places the action inside a non-button text element.
+    // Only accept a unique exact label inside an open dialog/menu.
+    const labels = scopes.flatMap(scope => [...scope.querySelectorAll('span,div')])
+      .filter(el => visible(el) && el.children.length === 0 && UNFOLLOW.has(text(el)));
+    if (labels.length === 1) return labels[0];
+    if (labels.length > 1) return null;
     const main = document.querySelector('main');
     const external = candidates(document, UNFOLLOW).filter(el => !main?.contains(el));
     return external.length === 1 ? external[0] : null;
@@ -59,6 +69,9 @@
     }
     if (blocked()) {
       return { status: 'skipped', reason: 'Instagram displayed an action restriction or security challenge.' };
+    }
+    if (/log in to instagram|you must log in|login required/i.test(document.body?.innerText || '')) {
+      return { status: 'skipped', reason: 'Instagram login is required; stop and sign in to your own account.' };
     }
     const main = await waitFor(() => document.querySelector('main'), 5000);
     if (!main || !sameProfile(username)) {
