@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Instagram Cleaner — Not Following Back",
-  "version": "1.1.0",
-  "description": "Compare your Instagram data export locally and review accounts not following you back before unfollowing.",
+  "version": "1.2.0",
+  "description": "Compare Instagram exports and process a durable, stoppable nonfollower queue",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "alarms"
   ],
   "host_permissions": [
     "https://www.instagram.com/*"
