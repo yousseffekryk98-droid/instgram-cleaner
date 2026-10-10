@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Instagram Cleaner - All-in-One",
-  "version": "1.0.0",
-  "description": "Manage Instagram Following and select liked content",
+  "version": "1.1.0",
+  "description": "Clean up Following and liked Instagram photos/Reels with native page controls",
   "permissions": [
     "storage",
     "activeTab"
@@ -19,6 +19,7 @@
         "https://www.instagram.com/*"
       ],
       "js": [
+        "likes-engine.js",
         "content.js"
       ],
       "run_at": "document_idle"
