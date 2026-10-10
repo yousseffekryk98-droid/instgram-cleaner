@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Instagram Cleaner - Remove Likes",
-  "version": "1.2.0",
-  "description": "User-started automatic batches for cleaning Instagram Likes via native web UI",
+  "version": "1.3.0",
+  "description": "Batch cleanup of Instagram Likes via native UI with detailed diagnostics",
   "permissions": [
     "storage",
     "activeTab"
