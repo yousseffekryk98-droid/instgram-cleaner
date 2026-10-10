@@ -1,6 +1,6 @@
 # Instagram Cleaner — Not Following Back
 
-A Chrome Manifest V3 extension for finding Instagram accounts **you follow that do not follow you back**, reviewing them, and optionally unfollowing in small, user-confirmed batches.
+A Chrome Manifest V3 extension for finding Instagram accounts **you follow that do not follow you back**, reviewing them, and optionally unfollowing your entire selected queue, one verified browser-visible profile at a time.
 
 **Branch:** `not-following-back` — separate from the existing [`main` Unfollow extension](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/main). The main branch is unchanged.
 
@@ -9,7 +9,7 @@ A Chrome Manifest V3 extension for finding Instagram accounts **you follow that 
 1. Compares **Instagram's own exported JSON data**: Following minus Followers.
 2. Shows non-followers in a searchable list.
 3. Allows **select all, individual selection, protect accounts**, and clearing selections.
-4. On your explicit confirmation, opens each selected Instagram profile and tries the native **Following → Unfollow** controls, in batches of **at most 10**.
+4. After your explicit confirmation, saves up to 5,000 selected usernames in a queue and opens each profile in turn. The Chrome alarm scheduler wakes the extension for the next account approximately every 30 seconds or later.
 5. Marks an action successful only if the profile visibly changes to **Follow** (or was already not followed), and reports skipped/uncertain actions separately.
 6. Provides **Stop**; it does not send private Instagram API requests or attempt to get around action limits.
 
@@ -69,12 +69,12 @@ There are no unfollows during the compare step. You must explicitly select accou
 ## 4. Unfollow non-followers
 
 1. Make sure Chrome's Instagram website is signed in to **the same account used to create the JSON export**.
-2. Review the checked usernames. Set **Maximum per batch** (1–10, default 5).
+2. Review the checked usernames. Set **Accounts to process** to **0 to process ALL selected** (default), or enter a smaller number (1–5,000).
 3. Click **Unfollow selected** and approve the confirmation prompt.
 4. The extension creates an Instagram tab and opens each requested profile. It checks the username in the URL before interacting.
 5. When it uniquely recognizes **Following** and then **Unfollow**, it clicks those native visible controls. It allows a delay between accounts and does **not** access Instagram's private APIs.
 6. The popup shows completed and skipped counts. Click **Stop** to prevent further profiles from being processed; an action already in progress may finish.
-7. Verify the resulting following status in Instagram. You can reopen the popup at any time to check the last batch. Run another small batch if you want to continue.
+7. The queue **continues after ordinary skipped accounts** and remembers the next username even if Chrome suspends its background worker. You can close the popup, but leave Chrome running and do not manually navigate the cleanup tab. Stop explicitly if you wish to pause. Check the progress when reopening the extension.
 
 If Instagram changes its buttons, shows a security challenge, or an unfollow cannot be verified, that account is **skipped rather than claimed as a success**. Never assume the number of accounts reported as processed equals the number actually unfollowed. A success labeled **already-not-following** means Instagram already showed a Follow button.
 
@@ -83,7 +83,7 @@ If Instagram changes its buttons, shows a security challenge, or an unfollow can
 - Unfollowing is hard to reverse. Confirm exactly who you selected; protect friends you want to keep.
 - Instagram may restrict repetitive activity. This extension does **not** bypass limitations, CAPTCHA or login challenges. If you see a restriction, stop and follow Instagram's instructions.
 - The exported relationship snapshot may be old. Someone may have followed you after the export. Get a new export if up-to-date results matter.
-- Chrome's service worker may be interrupted by browser restart or resource limits; interrupted work stops, and its progress may need to be refreshed. This is a best-effort browser UI assistant, not a guaranteed automation service.
+- A queued Chrome **alarm** handles each new profile, avoiding a single long-running background loop. If Chrome interrupts an action mid-click, that username is marked uncertain/skipped rather than clicked twice; the remaining queue continues. Chrome must remain running and alarms can be delayed, so delivery timing is not exact. This is a best-effort UI assistant, not guaranteed unattended completion.
 - Private profiles, localized Instagram UIs, changed layouts, popup timing, and login state can affect operation.
 - You cannot use the extension to manipulate an account you are not logged into. **Only use it on your own account.**
 
@@ -93,17 +93,17 @@ If Instagram changes its buttons, shows a security challenge, or an unfollow can
 - It saves only the **non-follower username comparison results**, counts, selected and protected usernames, and last-run status in `chrome.storage.local`. It does not keep raw follower/following JSON documents.
 - No analytics, passwords, trackers, or private Instagram endpoints.
 - **Clear imported data from this browser** removes comparison results, selections, protections, and progress.
-- The extension requests `storage`, `tabs`, and `https://www.instagram.com/*` access because it opens Instagram tabs, remembers your selection, and operates visible Instagram page controls.
+- The extension requests `storage`, `tabs`, **`alarms`**, and `https://www.instagram.com/*` access because it opens Instagram tabs, remembers your selection, schedules the next profile and operates visible Instagram page controls.
 
 ## Developer / tests
 
 No dependencies are required. With Node.js 18+ installed:
 
 ```bash
-node --test tests/compare.test.js
+node --test tests/compare.test.js tests/queue.test.js
 ```
 
-The tests cover username normalization, common Instagram JSON formats, multiple follower files, deduplication, and rejection of malformed inputs. The profile interaction needs manual live testing on an Instagram account and may break if Instagram changes its markup.
+The tests cover username normalization, common JSON formats and malformed data, plus alarm-driven multi-account processing, skips, Stop and account restrictions. The profile interaction needs manual live testing on an Instagram account and may break if Instagram changes its markup.
 
 ## Other editions
 
@@ -115,3 +115,7 @@ The tests cover username normalization, common Instagram JSON formats, multiple 
 | **`not-following-back`** | Export-based follower comparison + selective unfollow |
 
 **Independent project; not endorsed by Instagram or Meta.**
+
+## v1.2 queue fix
+
+Earlier versions ran a long async loop in a Manifest V3 service worker. Chrome may suspend that worker after an account, leaving only the first unfollow completed. Version 1.2 uses a **durable saved queue** and Chrome alarms to wake one account at a time. The queue supports **0 = all selected** (maximum 5,000) and stops for account restrictions. It never attempts to bypass Instagram's limits. Reinstall or reload the extension in `chrome://extensions` **and sign in to the correct Instagram account** before starting a new queue.
