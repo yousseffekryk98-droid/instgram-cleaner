@@ -1,4 +1,4 @@
-# Instagram Cleaner — All-in-One
+# Instagram Cleaner — All-in-One (v1.2)
 
 A **Chrome Manifest V3** extension combining the **Unfollow manager** and **Remove Likes assistant**. Likes grid scanning was improved in **v1.1** to detect thumbnail tiles even without `/p/` or `/reel/` links.
 
@@ -57,3 +57,30 @@ No password capture, external analytics, remote servers or direct Instagram priv
 ## Likes scanner regression tests
 
 Run `node --test tests/likes-engine.test.js` (Node.js 18+) to test the thumbnail scanner and native-selection state. These are mocked DOM tests; real Instagram can change without notice.
+
+## Automatic cleanup (v1.2)
+
+**New:** In the Likes tab, open **Automatic Likes cleanup**.
+
+1. Download the latest extension files from this branch, replace the old extension folder (or remove/reinstall), then press **Reload** in `chrome://extensions`.
+2. **Refresh Instagram's Likes page** at https://www.instagram.com/your_activity/interactions/likes/ after updating.
+3. Open the extension. The automatic section has:
+   - **Batch size**: 1–20 (default 10).
+   - **Maximum likes**: 1–10,000 (default 5,000).
+   - **Wait between batches**: 10–120 seconds (default 15 seconds).
+4. Check the acknowledgement that the extension will unlike the selected items automatically. Press **Start automatic cleanup** and confirm once.
+5. Leave the Instagram Likes tab open. You may close the extension popup; progress is saved locally and appears when you reopen it.
+6. The extension attempts to enter Instagram's selection mode, selects liked thumbnails (or starts with your existing manual selection), clicks Instagram's **own native Unlike control**, confirms an Instagram Unlike dialog if one appears, waits for the selection/grid to change, waits between batches, and loads more items by scrolling.
+7. Click **Stop** if necessary. You can click **Resume automatic cleanup** after an interruption, but do not resume while Instagram has a restriction or security challenge.
+
+### Important limitations
+
+- **No way to remove Instagram server limits.** If Instagram blocks an action, requires account verification/CAPTCHA, or refuses more unlikes, the extension stops rather than bypassing platform protections. Waiting between actions is not a guarantee against restrictions.
+- **No guarantee it will complete 5,000 likes unattended.** Chrome must stay running, the Instagram Likes tab must stay open, and the Instagram interface must continue loading. Reloading/closing the tab interrupts the run. Resuming requires you to click Resume.
+- **Best-effort visible UI only.** It does not call hidden APIs, import/export account credentials, simulate private web requests or falsely claim a click equals server-side unlike. "Observed" counts are inferred from Instagram clearing its selection and changing the grid; manually verify your Likes history afterward.
+- If Instagram does not allow automatic entry into selection mode, **manually select one post** so the native **1 selected** indicator appears and start again. If no unique Instagram Unlike control appears, use Instagram's own button yourself.
+- The extension may stop before finishing if Instagram stops loading more items, changes the interface, or cannot verify a selection/unlike action. If it stops, review the page before resuming.
+- Avoid opening two simultaneous cleanup runs in separate Instagram tabs.
+- The extension requires an explicit start and initial confirmation. There is no hidden/background account access, and this project is not affiliated with Meta.
+
+Run tests with `node --test tests/likes-engine.test.js tests/likes-auto.test.js`; GitHub Actions also runs these tests.
