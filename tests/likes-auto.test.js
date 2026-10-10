@@ -6,12 +6,16 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'likes-auto.js'), 'utf8');
-function fixture({ restricted = false, nativeSelected = 1, unlikeError = '' } = {}) {
+function fixture({ restricted = false, nativeSelected = 1, unlikeError = '',
+  clickActivatesSelection = true } = {}) {
   const stored = {};
   let unlikeClicks = 0;
   let tiles = [{
     source: 'https://example.invalid/media1.jpg',
-    media: { isConnected: true }
+    media: {
+      isConnected: true,
+      click: () => { if (clickActivatesSelection) nativeSelected = (nativeSelected ?? 0) + 1; }
+    }
   }];
   const ui = {
     isLikesPage: () => true,
@@ -92,4 +96,20 @@ test('stop request is available while tab continues running', () => {
 
 test('autopilot does not need account credentials or private endpoints', () => {
   assert.equal(/fetch\(|XMLHttpRequest|document\.cookie|instagram\.com\/api\//.test(source), false);
+});
+
+test('automatically activates selection by clicking one tile, if Instagram confirms it', async () => {
+  const f = fixture({ nativeSelected: null });
+  const state = await f.auto.run({ batchSize: 1, target: 1 });
+  assert.equal(state.state, 'finished');
+  assert.equal(state.verified, 1);
+  assert.equal(f.getCalls(), 1);
+});
+
+test('never clicks Unlike if Instagram does not enter selection mode', async () => {
+  const f = fixture({ nativeSelected: null, clickActivatesSelection: false });
+  const state = await f.auto.run({ batchSize: 1, target: 1 });
+  assert.equal(state.state, 'paused');
+  assert.equal(state.verified, 0);
+  assert.equal(f.getCalls(), 0);
 });
