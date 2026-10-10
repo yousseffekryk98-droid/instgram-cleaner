@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Instagram Cleaner - Remove Likes",
-  "version": "1.0.0",
-  "description": "Assist with selecting liked Instagram posts and Reels",
+  "version": "1.1.0",
+  "description": "Scan Instagram's Likes media grid and select/unlike liked posts using native page controls",
   "permissions": [
     "storage",
     "activeTab"
@@ -19,6 +19,7 @@
         "https://www.instagram.com/*"
       ],
       "js": [
+        "likes-engine.js",
         "content.js"
       ],
       "run_at": "document_idle"
