@@ -17,6 +17,11 @@ function harness(results = []) {
   };
   const alarms = { created: [], cleared: [], listener: null };
   const tabs = { tab: null, calls: [], removed: null, updated: null };
+  const fastDelays = [];
+  const trackedSetTimeout = (callback, delay, ...args) => {
+    fastDelays.push(delay);
+    return setTimeout(callback, delay, ...args);
+  };
   let onMessage, onStartup;
   const chrome = {
     alarms: {
@@ -56,7 +61,7 @@ function harness(results = []) {
       onStartup: { addListener: cb => { onStartup = cb; } }
     }
   };
-  const ctx = { chrome, URL, setTimeout, clearTimeout, Math, Date };
+  const ctx = { chrome, URL, setTimeout: trackedSetTimeout, clearTimeout, Math, Date };
   vm.createContext(ctx);
   vm.runInContext(script, ctx);
   const send = message => new Promise(resolve => onMessage(message, {}, resolve));
@@ -68,7 +73,7 @@ function harness(results = []) {
     }
     throw new Error('Queue did not advance to ' + target + ': ' + JSON.stringify(store.nonfollowersRun));
   };
-  return { store, tabs, alarms, send, fire, waitForProcessed };
+  return { store, tabs, alarms, fastDelays, send, fire, waitForProcessed };
 }
 
 test('three accounts are processed across separate alarm wake-ups', async () => {
@@ -117,4 +122,24 @@ test('Stop cancels future alarms', async () => {
   assert.equal(f.store.nonfollowersRun.active, false);
   f.fire(); await new Promise(resolve => setTimeout(resolve, 50));
   assert.equal(f.tabs.calls.length, 0);
+});
+
+test('fast timer targets 5 seconds, with a 30-second recovery alarm', async () => {
+  const f = harness();
+  const startedAt = Date.now();
+  await f.send({ type: 'START_NONFOLLOWERS', limit: 2 });
+  assert.ok(f.fastDelays.includes(1500), 'initial action uses a fast timer');
+  const initialAlarm = f.alarms.created.at(-1);
+  assert.ok(initialAlarm.args.when >= startedAt + 29000);
+  f.fire();
+  await f.waitForProcessed(1);
+  for (let i=0; i<50 && !f.fastDelays.includes(5000); i++) {
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.ok(f.fastDelays.includes(5000), 'next item uses a 5-second timer');
+  const latestAlarm = f.alarms.created.at(-1);
+  assert.ok(latestAlarm.args.when >= Date.now() + 28000,
+    'Chrome alarms remain a 30-second-or-longer fallback');
+  await f.send({ type:'STOP_NONFOLLOWERS' });
+  assert.equal(f.store.nonfollowersRun.active, false);
 });
