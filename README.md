@@ -30,7 +30,7 @@ All functionality runs locally in your browser; there is no build process or Ins
 3. Press Instagram's own **Select** control to reveal selectable cards if available.
 4. Check the desired posts/Reels in the popup, or choose **Select all**.
 5. Set the limit (1–25), press **Select in Instagram**, and confirm.
-6. Review the actual selections on Instagram and press Instagram's native **Unlike** button to finish. Unlike is **not** automatically clicked.
+6. Review the actual selections on Instagram. Click **Unlike selected in Instagram** in the extension, confirm the popup, and finish any further Instagram confirmation. Alternatively press Instagram's own **Unlike** button manually.
 7. Scroll and rescan for more items.
 
 ## Important limitations
