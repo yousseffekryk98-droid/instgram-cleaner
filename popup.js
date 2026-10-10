@@ -4,7 +4,7 @@
   const variant = window.CLEANER_VARIANT || 'unfollow';
   let mode = variant === 'likes' ? 'likes' : 'unfollow';
   let tabId = null;
-  let data = { items: [], selected: [], running: false, done: 0, skipped: 0 };
+  let data = { items: [], selected: [], running: false, done: 0, skipped: 0, instagramSelected: null };
   const escapeHTML = input => String(input).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
@@ -17,16 +17,18 @@
     }
     $('modeTitle').textContent = mode === 'likes' ? 'Liked posts & Reels' : 'Unfollow manager';
     $('guide').textContent = mode === 'likes'
-      ? 'Go to Your activity → Likes. Press Instagram Select, scan loaded posts and choose items. Finish using Instagram Unlike.'
+      ? 'Open Your activity → Likes. The scanner finds video/photo tiles even without post links. Select items in Instagram or choose them below, then confirm Unlike.'
       : 'Open your profile → Following list. Scan loaded accounts, choose who to unfollow, then run a small batch.';
     $('start').textContent = mode === 'likes' ? 'Select in Instagram' : 'Unfollow selected';
     $('protectRow').hidden = mode !== 'unfollow';
     $('likesFinish').hidden = mode !== 'likes';
-    $('count').textContent = data.items.length + ' loaded · ' + data.selected.length + ' selected';
+    $('count').textContent = data.items.length + ' loaded · ' + data.selected.length + ' selected in extension' +
+      (mode === 'likes' && data.instagramSelected !== null ? ' · ' + data.instagramSelected + ' selected on Instagram' : '');
     $('items').innerHTML = data.items.length
       ? data.items.map(item => `<div class="item" role="listitem"><label><input type="checkbox" data-key="${escapeHTML(item.key)}" ${data.selected.includes(item.key) ? 'checked' : ''} ${item.protected ? 'disabled' : ''}><span class="name" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</span></label>${item.protected ? '<span class="protected">Protected</span>' : ''}<a target="_blank" rel="noopener noreferrer" href="${escapeHTML(item.url)}">View ↗</a></div>`).join('')
       : '<p class="empty">No items yet. Open the correct Instagram screen and scan.</p>';
     $('start').disabled = data.running || data.selected.length === 0;
+    $('finishLikes').disabled = data.running;
     $('stop').disabled = !data.running;
     $('progress').textContent = data.running
       ? 'Running: ' + data.done + ' handled, ' + data.skipped + ' skipped'
@@ -70,7 +72,7 @@
   attach('start', async () => {
     const limit = Math.max(1, Math.min(25, Number($('max').value) || 10));
     const description = mode === 'likes'
-      ? 'select up to ' + limit + ' liked posts in Instagram? You must press Unlike on Instagram yourself.'
+      ? 'select up to ' + limit + ' currently loaded liked tiles in Instagram? Review the selected items before using Unlike.'
       : 'unfollow up to ' + limit + ' selected accounts? This can be difficult to reverse.';
     if (!confirm('Review your selection. Continue to ' + description)) return;
     await send('START', { limit });
@@ -89,7 +91,7 @@
     const next = e.target.dataset.mode;
     if (!next || (variant !== 'both' && variant !== next)) return;
     mode = next;
-    data = { items: [], selected: [], running: false, done: 0, skipped: 0 };
+    data = { items: [], selected: [], running: false, done: 0, skipped: 0, instagramSelected: null };
     render();
     void send('STATUS');
   });
