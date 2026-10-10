@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - likes-engine.js
+      - likes-auto.js
       - content.js
       - popup.js
       - tests/**
@@ -20,7 +21,8 @@ jobs:
       - name: Check extension JS syntax
         run: |
           node --check likes-engine.js
+          node --check likes-auto.js
           node --check content.js
           node --check popup.js
       - name: Run Likes regression tests
-        run: node --test tests/likes-engine.test.js
+        run: node --test tests/likes-engine.test.js tests/likes-auto.test.js
