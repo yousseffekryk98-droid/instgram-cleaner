@@ -25,7 +25,7 @@
     $('count').textContent = data.items.length + ' loaded · ' + data.selected.length + ' selected in extension' +
       (mode === 'likes' && data.instagramSelected !== null ? ' · ' + data.instagramSelected + ' selected on Instagram' : '');
     $('items').innerHTML = data.items.length
-      ? data.items.map(item => `<div class="item" role="listitem"><label><input type="checkbox" data-key="${escapeHTML(item.key)}" ${data.selected.includes(item.key) ? 'checked' : ''} ${item.protected ? 'disabled' : ''}><span class="name" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</span></label>${item.protected ? '<span class="protected">Protected</span>' : ''}<a target="_blank" rel="noopener noreferrer" href="${escapeHTML(item.url)}">View ↗</a></div>`).join('')
+      ? data.items.map(item => `<div class="item" role="listitem"><label><input type="checkbox" data-key="${escapeHTML(item.key)}" ${data.selected.includes(item.key) ? 'checked' : ''} ${item.protected ? 'disabled' : ''}><span class="name" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</span></label>${item.protected ? '<span class="protected">Protected</span>' : ''}${item.url ? `<a target="_blank" rel="noopener noreferrer" href="${escapeHTML(item.url)}">View ↗</a>` : ''}</div>`).join('')
       : '<p class="empty">No items yet. Open the correct Instagram screen and scan.</p>';
     $('start').disabled = data.running || data.selected.length === 0;
     $('finishLikes').disabled = data.running;
