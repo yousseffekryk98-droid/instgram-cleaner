@@ -1,48 +1,51 @@
-# Instagram Cleaner — Remove Likes
+# Instagram Cleaner — Remove Likes (v1.1)
 
-This branch contains a **Chrome Manifest V3 extension** for selecting previously liked Instagram posts and Reels through Instagram's own web interface.
+Chrome extension for selecting previously liked Instagram photos, videos and Reels using Instagram's visible **Your activity → Likes** interface.
 
-- [Unfollow edition (main)](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/main)
+- [Unfollow edition](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/main)
 - [All-in-One edition](https://github.com/yousseffekryk98-droid/instgram-cleaner/tree/all-in-one)
 
-## Install the extension
+## Install / update
 
-1. In this branch, choose **Code → Download ZIP**, then extract it.
-2. Open `chrome://extensions` in Chrome.
-3. Enable **Developer mode**.
-4. Choose **Load unpacked** and select the extracted directory containing `manifest.json`.
-5. Log in at https://www.instagram.com/ and reload Instagram before using the extension.
+1. Open this `remove-likes` branch on GitHub → **Code → Download ZIP**.
+2. Extract the ZIP. In Chrome, open `chrome://extensions` and enable **Developer mode**.
+3. If you installed an older version: **Remove** the old edition, or replace its files and press **Reload** on the extension card. Do not leave two identical editions running.
+4. Click **Load unpacked** and select the folder containing `manifest.json`.
+5. Reload your Instagram page, then reopen the extension. Reloading the Instagram tab after a code update is essential.
 
-There is no npm install, build step, server, API key, or Instagram-password field.
+No password or third-party account is needed.
 
-## Remove likes from posts and videos
+## How to remove your likes
 
-1. Click the extension and **Open Instagram** (or navigate to Instagram **Your activity → Interactions → Likes**).
-2. On Instagram's Likes activity screen, click **Select** if available.
-3. Open the extension popup and click **Scan loaded**. It scans rendered links to posts and Reels, not your entire likes history.
-4. Choose entries individually or click **Select all**. Enter a selection limit of up to **25**.
-5. Click **Select in Instagram** and confirm the extension prompt.
-6. The extension attempts to tick Instagram's visible native selection checkboxes. **Review those selections in Instagram**.
-7. After checking the selections on Instagram, click **Unlike selected in Instagram** in the extension and confirm its prompt. The extension clicks Instagram's own Unlike control if it is available. Complete any further Instagram confirmation yourself.
-8. Scroll to load more items, scan again and repeat.
+1. Sign in to Instagram at https://www.instagram.com/your_activity/interactions/likes/.
+2. Wait for the grid of liked posts and Reels to display.
+3. Open the Chrome extension. Click **Scan loaded** (it also attempts a scan when first opened). Unlike v1.0, **it detects visible media thumbnails without requiring a post/Reel link**.
+4. Under the list you'll see **X loaded**, **Y selected in extension**, and — where detectable — **Z selected on Instagram**. These counts are *different*: checking an item in the extension does not immediately select it on Instagram.
+5. Check individual thumbnails in the extension or click **Select all**. Set a batch size (maximum 25). Click **Select in Instagram** and confirm. The extension attempts to select those loaded items in Instagram.
+6. If Instagram's page doesn't provide identifiable selection controls, first **click one thumbnail manually in Instagram** so its **“1 selected”** bar appears, then click **Scan loaded** and try again. You can always complete selection manually using Instagram's own UI.
+7. **Review Instagram's selected posts/reels**, not just the extension list. Click **Unlike selected in Instagram** in the extension, confirm, and complete any Instagram confirmation. Or use Instagram's native **Unlike** button directly.
+8. Verify the items disappeared from Instagram Likes. Scroll the Instagram grid for more items and click **Scan loaded** again.
 
-## What works and what can fail
+**The extension does not claim an unlike succeeded merely because the button was pressed.** It uses visible website controls, and Instagram may require another confirmation or block an action.
 
-- Scans posts and Reels that Instagram has rendered as identifiable links.
-- Selects supported native checkbox/role=checkbox controls in the Instagram activity view.
-- Supports individually checked items, Select all, Clear and Stop.
-- Reports skipped items if Instagram has not exposed a selection checkbox.
-- Instagram sometimes implements selection by clicking the card itself, without checkbox elements. In that layout, use Instagram's built-in Select and Unlike manually.
-- The Instagram website frequently changes; if the page layout changes, scanning/selection may not work until the extension is updated.
-- Actions are capped at 25 attempted selections per batch, not a promise that every item is selected.
+## Changes in v1.1
 
-## Privacy and safety
+- **Fixed 0 loaded bug:** The old scanner only recognized anchors like `/p/<id>` or `/reel/<id>`. Instagram's activity grid can display thumbnails without those links. v1.1 detects visible, repeated image/video tiles.
+- **Fixed Unlike control detection:** Recognizes labels such as `Unlike` and `Unlike (1)`; requires Instagram's native control and an explicit user confirmation in the popup.
+- Shows Instagram's native selection count separately from popup selections.
+- Verifies native selection increases where Instagram exposes a selected-count indicator.
+- Stops rather than guessing if the selection mode or selected state cannot be verified.
+- Includes `node --test tests/likes-engine.test.js` regression tests and GitHub Actions.
 
-No credential collection, analytics or third-party servers. The extension only targets `https://www.instagram.com/*` and uses page controls. The user explicitly confirms the final unlike action in the popup; Instagram may also require its own confirmation. This is not affiliated with Instagram or Meta.
+## Limitations and troubleshooting
 
-## Troubleshooting
+- **Only loaded tiles:** Scroll to bring more posts into view and re-scan. It does not access your whole like history automatically.
+- **No tiles found:** Wait until the Likes grid loads, scroll into view, and refresh Instagram after installing. Also make sure the URL is `/your_activity/interactions/likes/`.
+- **Not selecting:** Instagram may implement native selection differently. Select a thumbnail manually first to turn on selection mode, then retry or use Instagram's controls.
+- **Unlike not found:** The extension will report this without claiming success. Use Instagram's own unlike action on the selected-post toolbar. If it doesn't appear, select a post on Instagram first.
+- **Changed Instagram design:** Meta can change CSS/DOM; not every layout or localization is guaranteed. Update may be needed.
+- **Action restrictions:** Don't use the extension to bypass Instagram's rate limits, account challenges or CAPTCHA. Stop if Instagram restricts activity.
 
-- **No liked items scanned:** Confirm you're on Instagram's Likes page, logged in, and that content has loaded.
-- **No checkboxes found:** Use the native Instagram Select mode and manually choose cards; not all layouts expose checkbox controls.
-- **Popup can't access Instagram:** Refresh the Instagram page and reopen the extension.
-- **Need to stop:** Use Stop in the extension; already-selected checkboxes can be cleared through Instagram.
+## Privacy
+
+No passwords, outside API requests, or analytics. The extension runs only against Instagram's visible page. Not affiliated with Instagram or Meta.
