@@ -1,227 +1,281 @@
-/* User-initiated, small-batch Instagram unfollow coordinator. No private APIs. */
+/* Instagram Cleaner - durable alarm-driven unfollow queue (Manifest V3).
+ * No private APIs, rate limit bypass or hidden browser actions.
+ */
 (() => {
   'use strict';
-  const LIMIT = 10;
-  const BETWEEN_ACTIONS_MS = 5500;
-  const LOAD_TIMEOUT_MS = 25000;
+  const KEY = 'nonfollowersRun';
+  const ALARM = 'instagram-nonfollowers-next';
+  const GAP_MS = 30000; // Chrome alarms wake the service worker between actions.
+  const MAX_QUEUE = 5000;
+  const LOAD_TIMEOUT = 25000;
   let executing = false;
 
-  const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-  const isUsername = s => typeof s === 'string' && /^[a-z0-9._]{1,30}$/i.test(s);
-  const getStored = async () => chrome.storage.local.get({
-    nonfollowersComparison: null, selectedTargets: [], protectedAccounts: [],
-    completedTargets: [], nonfollowersRun: null
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const validName = s => typeof s === 'string' && /^[a-z0-9._]{1,30}$/i.test(s);
+  const storage = () => chrome.storage.local.get({
+    nonfollowersComparison: null, selectedTargets: [],
+    protectedAccounts: [], completedTargets: [], [KEY]: null
   });
-  const lastMessage = e => e instanceof Error ? e.message : String(e);
-
-  async function updateRun(changes, runId) {
-    const { nonfollowersRun } = await getStored();
-    if (!nonfollowersRun || nonfollowersRun.id !== runId) return null;
-    const updated = { ...nonfollowersRun, ...changes, updatedAt: Date.now() };
-    await chrome.storage.local.set({ nonfollowersRun: updated });
-    return updated;
+  const getRun = async () => (await chrome.storage.local.get(KEY))[KEY];
+  const saveRun = async run => chrome.storage.local.set({ [KEY]: {
+    ...run, updatedAt: Date.now()
+  } });
+  const errorMessage = e => e instanceof Error ? e.message : String(e);
+  const blockedReason = s =>
+    /restriction|restrict|challenge|captcha|temporarily blocked|try again later|suspicious activity|action blocked|please wait a few minutes|تقييد|حاول مرة أخرى لاحقاً/i.test(s || '');
+  async function nextAlarm(when) {
+    await chrome.alarms.create(ALARM, { when: Date.now() + when });
   }
-
-  async function stop() {
-    const { nonfollowersRun } = await getStored();
-    if (!nonfollowersRun?.active) return { error: 'No batch is running.' };
-    await updateRun({ stopRequested: true, message: 'Stop requested; waiting for the current action.' }, nonfollowersRun.id);
-    return { message: 'Stop requested.' };
+  async function removeAlarm() { await chrome.alarms.clear(ALARM); }
+  function same(id, run) { return !!run && run.id === id; }
+  async function stop(reason = 'Stopped by user. No further accounts will be processed.') {
+    const run = await getRun();
+    if (!run?.active) return { error: 'No unfollow queue is running.' };
+    run.stopRequested = true;
+    run.message = reason;
+    await saveRun(run);
+    await removeAlarm();
+    return { message: 'Stop requested. The current action may finish first.' };
   }
 
   async function start(limitInput) {
-    const saved = await getStored();
-    const { nonfollowersComparison, nonfollowersRun } = saved;
-    if (executing || nonfollowersRun?.active) {
-      const age = Date.now() - (nonfollowersRun?.updatedAt || 0);
-      if (age < 120000 || executing) return { error: 'Another batch is already active. Use Stop first.' };
-      await updateRun({ active: false, stopRequested: true, message: 'Previous batch expired after interruption.' }, nonfollowersRun.id);
+    const saved = await storage();
+    if (saved[KEY]?.active) return {
+      error: 'A queue already exists. Stop it before starting another.'
+    };
+    const comparison = saved.nonfollowersComparison;
+    if (!Array.isArray(comparison?.targets) || !comparison?.importedAt) {
+      return { error: 'Import Followers and Following JSON before starting.' };
     }
-    if (!nonfollowersComparison?.targets?.length || !nonfollowersComparison.importedAt) {
-      return { error: 'Import and compare complete Instagram JSON files before unfollowing.' };
-    }
-    const allowed = new Set(nonfollowersComparison.targets);
+    const allowed = new Set(comparison.targets);
     const protectedNames = new Set(saved.protectedAccounts);
     const completed = new Set(saved.completedTargets);
-    const queue = [...new Set(saved.selectedTargets)].filter(name =>
-      isUsername(name) && allowed.has(name) && !protectedNames.has(name) && !completed.has(name))
-      .slice(0, Math.min(LIMIT, Math.max(1, Number(limitInput) || 5)));
-    if (!queue.length) return { error: 'Select at least one eligible non-follower first.' };
-    const now = Date.now();
+    const eligible = [...new Set(saved.selectedTargets)].filter(name =>
+      validName(name) && allowed.has(name) &&
+      !protectedNames.has(name) && !completed.has(name));
+    const requested = Number(limitInput);
+    const length = requested === 0 ? eligible.length :
+      Math.min(eligible.length, Math.max(1, Math.floor(requested) || 10));
+    const queue = eligible.slice(0, Math.min(MAX_QUEUE, length));
+    if (!queue.length) return { error: 'Select eligible accounts before starting.' };
     const run = {
-      id: String(now) + '-' + Math.random().toString(36).slice(2),
-      active: true, stopRequested: false, total: queue.length,
-      processed: 0, succeeded: 0, skipped: 0, current: '',
-      results: [], message: 'Starting a new Instagram tab…',
-      createdAt: now, updatedAt: now
+      id: String(Date.now()) + '-' + Math.random().toString(36).slice(2),
+      queue, index: 0, active: true, stopRequested: false,
+      total: queue.length, processed: 0, succeeded: 0, skipped: 0,
+      tabId: null, current: '', inFlight: null, results: [],
+      message: 'Queue saved. Opening Instagram…',
+      createdAt: Date.now(), updatedAt: Date.now()
     };
-    executing = true;
-    await chrome.storage.local.set({ nonfollowersRun: run });
-    void execute(run.id, queue).catch(async e => {
-      await updateRun({ active: false, message: 'Unexpected failure: ' + lastMessage(e) }, run.id);
-      executing = false;
-    });
-    return { message: 'Running on up to ' + queue.length + ' selected accounts.' };
+    await saveRun(run);
+    await nextAlarm(1500);
+    return { message: 'Queue scheduled for ' + queue.length + ' accounts, one at a time.' };
   }
 
-  async function waitForDocument(tabId, expectedPath) {
+  async function waitForDocument(tabId, username) {
+    const expectedPath = '/' + username.toLowerCase() + '/';
     return new Promise((resolve, reject) => {
-      let settled = false;
-      const clean = () => {
-        clearTimeout(timer);
-        chrome.tabs.onUpdated.removeListener(onUpdate);
-        chrome.tabs.onRemoved.removeListener(onRemoved);
+      let finished = false;
+      const matches = tab => {
+        try {
+          const address = new URL(tab.url);
+          return tab.status === 'complete' &&
+            address.hostname === 'www.instagram.com' &&
+            address.pathname.toLowerCase() === expectedPath;
+        } catch { return false; }
       };
-      const finish = (error) => {
-        if (settled) return;
-        settled = true; clean();
+      const cleanup = () => {
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(updated);
+        chrome.tabs.onRemoved.removeListener(removed);
+      };
+      const done = error => {
+        if (finished) return;
+        finished = true; cleanup();
         if (error) reject(error);
         else resolve();
       };
-      const onRemoved = removed => {
-        if (removed === tabId) finish(Error('Cleanup tab was closed.'));
-      };
-      const matches = tab => {
-        try {
-          return tab?.status === 'complete' &&
-            new URL(tab.url).pathname.toLowerCase() === expectedPath.toLowerCase();
-        } catch { return false; }
-      };
-      const onUpdate = (changedId, change, tab) => {
-        if (changedId === tabId && matches(tab)) finish();
-      };
-      const timer = setTimeout(() => finish(Error('Timed out loading Instagram profile.')), LOAD_TIMEOUT_MS);
-      chrome.tabs.onUpdated.addListener(onUpdate);
-      chrome.tabs.onRemoved.addListener(onRemoved);
-      chrome.tabs.get(tabId).then(tab => {
-        if (matches(tab)) finish();
-      }).catch(finish);
+      const updated = (id, change, tab) => { if (id === tabId && matches(tab)) done(); };
+      const removed = id => { if (id === tabId) done(new Error('Cleanup tab closed.')); };
+      const timer = setTimeout(() => done(new Error('Instagram profile loading timed out.')), LOAD_TIMEOUT);
+      chrome.tabs.onUpdated.addListener(updated);
+      chrome.tabs.onRemoved.addListener(removed);
+      chrome.tabs.get(tabId).then(tab => { if (matches(tab)) done(); }).catch(done);
     });
   }
-
-  async function invokeOnProfile(tabId, username) {
+  async function contentAction(tabId, username) {
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
         const result = await chrome.tabs.sendMessage(tabId, {
           type: 'UNFOLLOW_IF_FOLLOWING', username
         });
-        if (result?.status) return result;
-        return { status: 'skipped', reason: 'Unexpected Instagram page response.' };
+        return result?.status ? result : {
+          status: 'skipped', reason: 'Unexpected Instagram response.'
+        };
       } catch (e) {
-        if (attempt === 3) return {
-          status: 'skipped',
-          reason: 'Instagram content script unavailable: ' + lastMessage(e)
+        if (attempt >= 3) return {
+          status: 'skipped', reason: 'Instagram content script not ready: ' + errorMessage(e)
         };
-        await delay(800);
+        await sleep(750);
       }
     }
-    return { status: 'skipped', reason: 'Instagram page not ready.' };
   }
 
-  async function execute(runId, queue) {
-    let tab = null;
-    let finished = false;
+  async function finishEntry(id, username, response) {
+    const saved = await storage(), run = saved[KEY];
+    if (!same(id, run) || !run.active) return;
+    // A stop requested during the action always wins.
+    const successful = ['unfollowed', 'already-not-following'].includes(response.status);
+    const restricted = blockedReason(response.reason);
+    const outcome = {
+      username, status: successful ? response.status : 'skipped',
+      reason: response.reason || ''
+    };
+    if (successful) {
+      await chrome.storage.local.set({
+        completedTargets: [...new Set([...saved.completedTargets, username])],
+        selectedTargets: saved.selectedTargets.filter(x => x !== username)
+      });
+    }
+    run.index++;
+    run.processed++;
+    run.succeeded += Number(successful);
+    run.skipped += Number(!successful);
+    run.results = [...run.results, outcome].slice(-30);
+    run.current = '';
+    run.inFlight = null;
+    run.message = '@' + username + ': ' + (response.reason || response.status);
+    if (restricted) {
+      run.stopRequested = true;
+      run.message += ' Instagram restriction detected; queue stopped.';
+    }
+    if (run.stopRequested || run.index >= run.queue.length) {
+      run.active = false;
+      run.message += run.stopRequested ? ' No more profiles will be processed.' : ' Queue complete.';
+      await saveRun(run);
+      await removeAlarm();
+    } else {
+      await saveRun(run);
+      await nextAlarm(GAP_MS);
+    }
+  }
+
+  async function processNext() {
+    if (executing) return;
+    executing = true;
+    let run;
     try {
-      for (let index = 0; index < queue.length; index++) {
-        const currentRun = (await getStored()).nonfollowersRun;
-        if (!currentRun || currentRun.id !== runId || currentRun.stopRequested) {
-          finished = true; break;
-        }
-        const username = queue[index];
-        const path = '/' + username + '/';
-        const url = 'https://www.instagram.com' + path;
-        await updateRun({ current: username, message: 'Loading @' + username + '…' }, runId);
-
-        let result;
-        try {
-          if (!tab) tab = await chrome.tabs.create({ url, active: true });
-          else tab = await chrome.tabs.update(tab.id, { url, active: true });
-          await waitForDocument(tab.id, path);
-          await delay(900);
-          if ((await getStored()).nonfollowersRun?.stopRequested) {
-            finished = true; break;
-          }
-          result = await invokeOnProfile(tab.id, username);
-        } catch (e) {
-          result = { status: 'skipped', reason: lastMessage(e) };
-          if (result.reason.includes('tab was closed')) {
-            await updateRun({ stopRequested: true }, runId);
-          }
-        }
-
-        const saved = await getStored();
-        const previous = saved.nonfollowersRun;
-        if (!previous || previous.id !== runId) { finished = true; break; }
-        const succeeded = result.status === 'unfollowed' || result.status === 'already-not-following';
-        const status = succeeded ? result.status : 'skipped';
-        const results = [...(previous.results || []), {
-          username, status, reason: result.reason || ''
-        }].slice(-10);
-        const updates = {
-          processed: previous.processed + 1,
-          succeeded: previous.succeeded + Number(succeeded),
-          skipped: previous.skipped + Number(!succeeded),
-          results,
-          current: '',
-          message: succeeded
-            ? '@' + username + ': ' + (result.reason || status) 
-            : '@' + username + ' skipped: ' + (result.reason || 'Could not verify unfollow.')
-        };
-        const storageUpdates = {};
-        // Do not keep attempting other accounts if Instagram signals a restriction.
-        const restriction = /restriction|challenge|temporarily blocked|try again later/i.test(result.reason || '');
-        if (restriction) updates.message += ' Batch halted because Instagram restricted the action.';
-        if (succeeded) {
-          storageUpdates.completedTargets = [...new Set([...saved.completedTargets, username])];
-          storageUpdates.selectedTargets = saved.selectedTargets.filter(x => x !== username);
-        }
-        // Keep stopRequested from the latest snapshot.
-        storageUpdates.nonfollowersRun = {
-          ...previous, ...updates, stopRequested: previous.stopRequested || restriction,
-          updatedAt: Date.now()
-        };
-        await chrome.storage.local.set(storageUpdates);
-        if (previous.stopRequested || restriction) { finished = true; break; }
-        if (index + 1 < queue.length) await delay(BETWEEN_ACTIONS_MS);
+      run = await getRun();
+      if (!run?.active) return;
+      if (run.stopRequested) {
+        run.active = false;
+        await saveRun(run);
+        await removeAlarm();
+        return;
       }
-    } finally {
-      const prior = (await getStored()).nonfollowersRun;
-      if (prior?.id === runId) {
-        await updateRun({
-          active: false,
-          current: '',
-          message: prior.stopRequested || finished
-            ? 'Batch stopped. Review Instagram for actions already completed.'
-            : 'Batch finished. Review Instagram and re-export later to refresh results.'
-        }, runId);
+      if (run.inFlight) {
+        // Chrome can suspend the worker during a network or UI operation.
+        // Don't click the same account again after restart. Mark uncertain.
+        await finishEntry(run.id, run.inFlight, {
+          status: 'skipped',
+          reason: 'Interrupted while processing this profile; verify it manually.'
+        });
+        return;
       }
-      executing = false;
-      // Leave the Instagram tab open so the user can independently review the result.
-    }
+      const username = run.queue[run.index];
+      if (!username) {
+        run.active = false;
+        run.message = 'All selected accounts processed.';
+        await saveRun(run);
+        await removeAlarm();
+        return;
+      }
+      // Account may have been protected while an existing queue was running.
+      const latest = await storage();
+      if (latest.protectedAccounts.includes(username) ||
+          latest.completedTargets.includes(username)) {
+        await finishEntry(run.id, username, {
+          status: 'skipped', reason: 'Already processed or protected; skipped.'
+        });
+        return;
+      }
+      run.current = username;
+      run.inFlight = username;
+      run.message = 'Opening @' + username + ' (' + (run.index + 1) + '/' + run.total + ')';
+      await saveRun(run);
+      // Recovery alarm if browser suspends the active worker part-way through.
+      await nextAlarm(90000);
+      let response;
+      try {
+        const url = 'https://www.instagram.com/' + username + '/';
+        let tab;
+        if (run.tabId) {
+          tab = await chrome.tabs.get(run.tabId);
+          tab = await chrome.tabs.update(tab.id, { url, active: true });
+        } else {
+          tab = await chrome.tabs.create({ url, active: true });
+          const latestRun = await getRun();
+          if (same(run.id, latestRun)) {
+            latestRun.tabId = tab.id;
+            await saveRun(latestRun);
+          }
+        }
+        await waitForDocument(tab.id, username);
+        await sleep(700);
+        const latestRun = await getRun();
+        if (latestRun?.stopRequested) response = {
+          status: 'skipped', reason: 'User requested stop before the click.'
+        };
+        else response = await contentAction(tab.id, username);
+      } catch (e) {
+        response = {
+          status: 'skipped', reason: errorMessage(e)
+        };
+        if (/Cleanup tab closed/i.test(response.reason)) {
+          await stop('Cleanup tab closed; stop requested.');
+        }
+      }
+      await finishEntry(run.id, username, response);
+    } catch (e) {
+      const latest = await getRun();
+      if (latest?.active) {
+        latest.stopRequested = true;
+        latest.active = false;
+        latest.message = 'Queue stopped after unexpected error: ' + errorMessage(e);
+        await saveRun(latest);
+      }
+      await removeAlarm();
+    } finally { executing = false; }
   }
 
+  chrome.alarms.onAlarm.addListener(alarm => {
+    if (alarm.name === ALARM) void processNext();
+  });
   chrome.runtime.onMessage.addListener((request, sender, reply) => {
     if (request?.type === 'START_NONFOLLOWERS') {
-      start(request.limit).then(reply).catch(e => {
-        executing = false;
-        reply({ error: lastMessage(e) });
-      });
+      start(request.limit).then(reply).catch(e => reply({ error: errorMessage(e) }));
       return true;
     }
     if (request?.type === 'STOP_NONFOLLOWERS') {
-      stop().then(reply).catch(e => reply({ error: lastMessage(e) }));
+      stop().then(reply).catch(e => reply({ error: errorMessage(e) }));
+      return true;
+    }
+    if (request?.type === 'STATUS_NONFOLLOWERS') {
+      getRun().then(run => reply({ run })).catch(e => reply({ error: errorMessage(e) }));
       return true;
     }
     return false;
   });
-
-  chrome.runtime.onStartup.addListener(async () => {
-    const { nonfollowersRun } = await getStored();
-    if (nonfollowersRun?.active) {
-      await updateRun({
-        active: false, stopRequested: true,
-        message: 'Chrome restarted; interrupted batch safely stopped.'
-      }, nonfollowersRun.id);
-    }
+  chrome.runtime.onStartup.addListener(() => {
+    void getRun().then(async run => {
+      if (!run?.active) return;
+      // After restart never repeat an action without verifying manually.
+      if (run.inFlight) {
+        await finishEntry(run.id, run.inFlight, {
+          status: 'skipped', reason: 'Chrome restarted during this profile; verify manually.'
+        });
+      } else {
+        await nextAlarm(2000);
+      }
+    });
   });
 })();
